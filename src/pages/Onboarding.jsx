@@ -69,7 +69,7 @@ export default function Onboarding({ onComplete }) {
         {/* STEP 1: LOGIN */}
         {step === 1 && (
           <div className="fade-in">
-            <div style={{ width: 64, height: 64, background: '#FDE8E9', color: '#CC1016', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }}>
+            <div style={{ width: 64, height: 64, background: 'var(--error-bg)', color: 'var(--error-text)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }}>
               <Youtube size={32} />
             </div>
             <h1 className="heading-xl mb-12">Connect YouTube</h1>
@@ -77,7 +77,7 @@ export default function Onboarding({ onComplete }) {
               CreatorIQ needs read/write access to your YouTube channel to audit your videos and apply SEO updates automatically.
             </p>
             
-            {error && <div style={{ background: "#FDE8E9", color: "#CC1016", padding: 12, borderRadius: 8, fontSize: 13, marginBottom: 20 }}>{error}</div>}
+            {error && <div style={{ background: "var(--error-bg)", color: "var(--error-text)", padding: 12, border: '1px solid var(--error-border)', borderRadius: 8, fontSize: 13, marginBottom: 20 }}>{error}</div>}
 
             <button className="btn btn-primary" onClick={() => login()} disabled={loading} style={{ width: '100%', padding: '12px 24px', fontSize: 16 }}>
               {loading ? <Spinner size={20} /> : "Sign in with Google"}
@@ -91,7 +91,7 @@ export default function Onboarding({ onComplete }) {
         {/* STEP 2: CONFIRM CHANNEL */}
         {step === 2 && channelInfo && (
           <div className="fade-in">
-            <div style={{ width: 64, height: 64, background: '#EAF4EA', color: '#057642', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }}>
+            <div style={{ width: 64, height: 64, background: 'var(--success-bg)', color: 'var(--success-text)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }}>
               <CheckCircle2 size={32} />
             </div>
             <h1 className="heading-xl mb-12">Channel Found!</h1>
@@ -105,7 +105,7 @@ export default function Onboarding({ onComplete }) {
               </div>
             </div>
 
-            <button className="btn btn-primary" onClick={() => setStep(3)} style={{ width: '100%', padding: '12px 24px', fontSize: 16 }}>
+            <button className="btn btn-primary" onClick={() => import.meta.env.VITE_GEMINI_API_KEY ? onComplete() : setStep(3)} style={{ width: '100%', padding: '12px 24px', fontSize: 16 }}>
               Continue <ArrowRight size={18} />
             </button>
           </div>
@@ -114,7 +114,7 @@ export default function Onboarding({ onComplete }) {
         {/* STEP 3: GEMINI AI SETUP */}
         {step === 3 && (
           <div className="fade-in">
-            <div style={{ width: 64, height: 64, background: '#F4FAFF', color: 'var(--accent)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }}>
+            <div style={{ width: 64, height: 64, background: 'var(--info-bg)', color: 'var(--info-text)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }}>
               <Wand2 size={32} />
             </div>
             <h1 className="heading-xl mb-12">Enable AI Features</h1>
@@ -122,7 +122,7 @@ export default function Onboarding({ onComplete }) {
               To generate AI-powered titles, descriptions, and tags, paste your free Gemini API key below.
             </p>
 
-            {aiError && <div style={{ background: "#FDE8E9", color: "#CC1016", padding: 12, borderRadius: 8, fontSize: 13, marginBottom: 20 }}>{aiError}</div>}
+            {aiError && <div style={{ background: "var(--error-bg)", color: "var(--error-text)", padding: 12, border: '1px solid var(--error-border)', borderRadius: 8, fontSize: 13, marginBottom: 20 }}>{aiError}</div>}
 
             <input 
               type="password" 

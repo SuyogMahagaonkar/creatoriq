@@ -87,14 +87,14 @@ export default function CommentsPage({ setIsSessionExpired }) {
   const renderSentimentBadge = (sentiment) => {
     if (sentiment === 'positive') {
       return (
-        <span style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'rgba(5, 118, 66, 0.1)', color: '#057642', padding: '2px 8px', borderRadius: 12, fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'var(--success-bg)', color: 'var(--success-text)', padding: '2px 8px', borderRadius: 12, fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
           <Smile size={12} /> Positive
         </span>
       );
     }
     if (sentiment === 'negative') {
       return (
-        <span style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'rgba(204, 16, 22, 0.1)', color: '#CC1016', padding: '2px 8px', borderRadius: 12, fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'var(--error-bg)', color: 'var(--error-text)', padding: '2px 8px', borderRadius: 12, fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
           <Frown size={12} /> Negative
         </span>
       );
@@ -278,7 +278,7 @@ export default function CommentsPage({ setIsSessionExpired }) {
     return (
       <div key={c.commentId} style={{ 
         background: 'var(--card)', borderRadius: 16, padding: '24px 20px', marginBottom: 16,
-        boxShadow: isDraftingHere ? '0 8px 32px rgba(10, 102, 194, 0.15)' : '0 2px 8px rgba(0,0,0,0.04)', 
+        boxShadow: isDraftingHere ? 'var(--shadow-ai)' : 'var(--shadow-sm)', 
         border: isDraftingHere ? '1px solid var(--accent)' : '1px solid var(--border)',
         opacity: isSuccess && viewMode === 'list' && activeTab === "needs" ? 0.6 : 1, transition: 'all 0.4s ease' 
       }}>
@@ -545,7 +545,7 @@ export default function CommentsPage({ setIsSessionExpired }) {
         <div style={{ background: 'var(--card)', padding: 20, borderRadius: 16, border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
             <div style={{ fontSize: 15, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text)' }}>
-              <div style={{ background: 'var(--surface-2)', padding: 6, borderRadius: 8 }}><ScanFace size={16} color="#057642" /></div>
+              <div style={{ background: 'var(--surface-2)', padding: 6, borderRadius: 8 }}><ScanFace size={16} color="var(--success-text)" /></div>
               Pipeline & Sentiment
             </div>
             <button onClick={handleScanSentiments} disabled={isScanningVibes} className="btn btn-secondary btn-sm" style={{ borderRadius: 16 }}>
@@ -559,7 +559,7 @@ export default function CommentsPage({ setIsSessionExpired }) {
               <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Inbox</div>
             </div>
             <div style={{ flex: 1, background: 'var(--surface)', padding: '12px 16px', borderRadius: 12, border: '1px solid var(--border-strong)' }}>
-              <div style={{ fontSize: 24, fontWeight: 800, color: '#057642' }}>{alreadyCommented.length}</div>
+              <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--success-text)' }}>{alreadyCommented.length}</div>
               <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Resolved</div>
             </div>
           </div>
@@ -604,8 +604,8 @@ export default function CommentsPage({ setIsSessionExpired }) {
           {/* MY COMMENTS TOGGLE */}
           <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', background: 'var(--surface-2)', padding: '8px 12px', borderRadius: 20, border: '1px solid var(--border)' }}>
             <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-muted)' }}>Show My Comments</span>
-            <div onClick={() => setShowCreatorComments(!showCreatorComments)} style={{ width: 36, height: 20, background: showCreatorComments ? 'var(--accent)' : 'var(--border-strong)', borderRadius: 20, position: 'relative', transition: '0.3s' }}>
-              <div style={{ width: 14, height: 14, background: '#fff', borderRadius: '50%', position: 'absolute', top: 3, left: showCreatorComments ? 19 : 3, transition: '0.3s' }} />
+            <div onClick={() => setShowCreatorComments(!showCreatorComments)} style={{ width: 36, height: 20, background: showCreatorComments ? 'var(--accent)' : 'var(--text-muted)', borderRadius: 20, position: 'relative', transition: '0.3s' }}>
+              <div style={{ width: 14, height: 14, background: 'var(--bg)', borderRadius: '50%', position: 'absolute', top: 3, left: showCreatorComments ? 19 : 3, transition: '0.3s' }} />
             </div>
           </label>
         </div>
@@ -625,14 +625,14 @@ export default function CommentsPage({ setIsSessionExpired }) {
               <button onClick={() => setActiveTab("needs")} style={{ flex: 1, padding: '12px 0', border: 'none', borderBottom: activeTab === "needs" ? '3px solid var(--accent)' : '3px solid transparent', background: 'transparent', color: activeTab === "needs" ? 'var(--text)' : 'var(--text-muted)', fontWeight: 700, fontSize: 14, cursor: 'pointer', transition: '0.2s' }}>
                 Inbox ({needsEngagement.length})
               </button>
-              <button onClick={() => setActiveTab("done")} style={{ flex: 1, padding: '12px 0', border: 'none', borderBottom: activeTab === "done" ? '3px solid #057642' : '3px solid transparent', background: 'transparent', color: activeTab === "done" ? 'var(--text)' : 'var(--text-muted)', fontWeight: 700, fontSize: 14, cursor: 'pointer', transition: '0.2s' }}>
+              <button onClick={() => setActiveTab("done")} style={{ flex: 1, padding: '12px 0', border: 'none', borderBottom: activeTab === "done" ? '3px solid var(--success-text)' : '3px solid transparent', background: 'transparent', color: activeTab === "done" ? 'var(--text)' : 'var(--text-muted)', fontWeight: 700, fontSize: 14, cursor: 'pointer', transition: '0.2s' }}>
                 Responded ({alreadyCommented.length})
               </button>
             </div>
             
             {displayedComments.length === 0 ? (
               <div className="card" style={{ padding: '60px 20px', textAlign: 'center', color: 'var(--text-muted)' }}>
-                <CheckCircle2 size={48} style={{ opacity: 0.2, marginBottom: 16, color: '#057642' }} />
+                <CheckCircle2 size={48} style={{ opacity: 0.2, marginBottom: 16, color: 'var(--success-text)' }} />
                 <h3 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text)' }}>Pipeline Clear</h3>
                 <p style={{ fontSize: 14, marginTop: 8 }}>No comments in this view.</p>
               </div>
@@ -662,7 +662,7 @@ export default function CommentsPage({ setIsSessionExpired }) {
             {/* COLUMN 2: RESPONDED */}
             <div style={{ flex: '1 1 400px', minWidth: 350, background: 'var(--surface-2)', padding: 16, borderRadius: 20, border: '1px solid var(--border)' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, padding: '0 8px' }}>
-                <h3 style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 8 }}><CheckCircle2 size={18} color="#057642" /> Responded</h3>
+                <h3 style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 8 }}><CheckCircle2 size={18} color="var(--success-text)" /> Responded</h3>
                 <span style={{ background: 'var(--card)', padding: '2px 10px', borderRadius: 12, fontSize: 12, fontWeight: 700 }}>{alreadyCommented.length}</span>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>

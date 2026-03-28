@@ -200,8 +200,8 @@ export async function uploadVideoToYouTube(file, metadata, token) {
 
 // --- GENERATE FRESH SEO CONTENT FROM A TOPIC ---
 // --- GENERATE FRESH SEO CONTENT FROM A TOPIC ---
-export async function generateFreshSEO(type, topic, currentTitle = "", currentDesc = "") {
-  const apiKey = localStorage.getItem("creator_iq_gemini_key");
+export async function generateFreshSEO(type, topic, currentTitle = "", currentDesc = "", videoDuration = "Unknown") {
+  const apiKey = getGeminiKey();
   if (!apiKey) throw new Error("Missing Gemini API Key in Settings.");
 
   let prompt = "";
@@ -220,6 +220,22 @@ Output ONLY a valid JSON array containing exactly 1 string.`;
 Video Title: "${currentTitle}"
 Video Description: "${currentDesc}"
 Output ONLY a valid JSON array of strings. Example: ["tag1", "tag2", "tag3"]`;
+  } else if (type === "chapters") {
+    // If the duration is an ISO string like PT1M30S, Gemini can usually parse it natively, but if parseDuration is available we use it if we can. 
+    // Usually Gemini is smart enough to handle PT1M30S or 1:30 formats.
+    prompt = `Act as an expert YouTube SEO strategist. Create logical video chapters (timestamps) starting at 00:00 for the video.
+Topic/Title: "${topic}"
+Video Duration: "${videoDuration}"
+Context/Description: "${currentDesc}"
+
+CRITICAL INSTRUCTIONS: 
+1. The timestamps MUST linearly progress and MUST NOT exceed the precise Video Duration (${videoDuration}).
+2. The final chapter timestamp must be at least 10% before the end of the duration.
+3. Read the Context/Description. If specific events or times are mentioned, use them! If not, logically estimate typical sections for this topic within the exact duration.
+Output ONLY a valid JSON array of strings in format: ["00:00 Intro", "01:15 Section 1", "03:00 Outro"]. Exactly 5-8 chapters.`;
+  } else if (type === "long_tail_keywords") {
+    prompt = `Act as an expert YouTube SEO strategist. Suggest exactly 5 low-competition, high-search-intent long-tail keywords based on the seed topic: "${topic}".
+Output ONLY a valid JSON array of strings. Example: ["how to...", "best way to..."]`;
   }
 
   // 1. Fallback cascade (Same as your SEO Auditor)
@@ -298,7 +314,7 @@ Output ONLY a valid JSON array of strings. Example: ["tag1", "tag2", "tag3"]`;
 
 
 export async function fetchGeminiSuggestions(field, currentText, targetObj, issues) {
-  if (!GEMINI_API_KEY) throw new Error("Missing VITE_GEMINI_API_KEY. Please add it to your .env file.");
+  if (!getGeminiKey()) throw new Error("Missing VITE_GEMINI_API_KEY. Please add it to your .env file.");
   
   const safeTags = targetObj.tags ? targetObj.tags.join(", ") : "";
   const issuesList = issues.length > 0 ? issues.join(" | ") : "None. Just optimize for better CTR and engagement.";
@@ -329,7 +345,7 @@ export async function fetchGeminiSuggestions(field, currentText, targetObj, issu
     const currentModel = modelsToTry[i];
     
     try {
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${currentModel}:generateContent?key=${GEMINI_API_KEY}`, {
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${currentModel}:generateContent?key=${getGeminiKey()}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -388,7 +404,7 @@ export async function fetchGeminiSuggestions(field, currentText, targetObj, issu
 // NEW: AI THUMBNAIL ANALYZER (Gemini Vision)
 // ============================================================
 export async function analyzeThumbnailWithAI(base64Image, mimeType) {
-  const apiKey = localStorage.getItem("creator_iq_gemini_key");
+  const apiKey = getGeminiKey();
   if (!apiKey) throw new Error("Missing Gemini API Key in Settings.");
 
   const prompt = `Act as an expert YouTube strategist. Analyze this video thumbnail for Click-Through Rate (CTR) potential. 
@@ -459,7 +475,7 @@ Output ONLY valid JSON in this exact format:
 // NEW: AI THUMBNAIL GENERATOR (Imagen 3)
 // ============================================================
 export async function generateAIThumbnail(prompt) {
-  const apiKey = localStorage.getItem("creator_iq_gemini_key");
+  const apiKey = getGeminiKey();
   if (!apiKey) throw new Error("Missing Gemini API Key.");
 
   // Using the official v1beta Imagen 3 endpoint for AI Studio
@@ -630,7 +646,7 @@ export async function postCommentReply(parentId, replyText) {
 }
 
 export async function draftCommentReply(commentText) {
-  const apiKey = localStorage.getItem("creator_iq_gemini_key");
+  const apiKey = getGeminiKey();
   if (!apiKey) throw new Error("Missing Gemini API Key.");
 
   const prompt = `Act as the friendly and professional creator of a YouTube channel. 
@@ -654,7 +670,7 @@ Output ONLY the raw reply text, no quotes or JSON.`;
 
 export async function fetchSingleVideo(videoId) {
   const token = localStorage.getItem("creator_iq_token");
-  const res = await fetch(`https://www.googleapis.com/youtube/v3/videos?part=snippet,status&id=${videoId}`, {
+  const res = await fetch(`https://www.googleapis.com/youtube/v3/videos?part=snippet,status,contentDetails&id=${videoId}`, {
     headers: { "Authorization": `Bearer ${token}` }
   });
   if (!res.ok) throw new Error("Failed to fetch video details.");

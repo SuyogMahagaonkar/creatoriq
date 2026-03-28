@@ -1,51 +1,59 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { UploadCloud, Wand2, AlertTriangle, CheckCircle2, Video, Lock, Globe, Link, Layers, Image as ImageIcon, Sparkles, X, ImagePlus, Crop, LayoutList } from 'lucide-react';
+import { UploadCloud, Wand2, AlertTriangle, CheckCircle2, Video, Lock, Globe, Link, Layers, Image as ImageIcon, Sparkles, X, ImagePlus, Crop, LayoutList, Trash2 } from 'lucide-react';
 import { analyzeTitle, analyzeDescription, analyzeTags, getScoreColor } from '../utils';
-import { generateFreshSEO, uploadVideoToYouTube, fetchPlaylists, addVideoToPlaylist, analyzeThumbnailWithAI, generateAIThumbnail } from '../api';
+import { generateFreshSEO, uploadVideoToYouTube, fetchPlaylists, addVideoToPlaylist, analyzeThumbnailWithAI, generateAIThumbnail, uploadCustomThumbnail } from '../api';
 import { Spinner, ScoreCircle } from '../components/Shared';
 
 export default function UploadPage() {
-  // Video & Text States
+  const draft = JSON.parse(localStorage.getItem('creator_iq_upload_draft')) || {};
+
   const [file, setFile] = useState(null);
-  const [topic, setTopic] = useState("");
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [tags, setTags] = useState("");
-  
-  // Settings States
-  const [privacy, setPrivacy] = useState("private");
+  const [topic, setTopic] = useState(draft.topic || "");
+  const [title, setTitle] = useState(draft.title || "");
+  const [description, setDescription] = useState(draft.description || "");
+  const [tags, setTags] = useState(draft.tags || "");
+
+  const [privacy, setPrivacy] = useState(draft.privacy || "private");
   const [allPlaylists, setAllPlaylists] = useState([]);
-  const [selectedPlaylist, setSelectedPlaylist] = useState("");
+  const [selectedPlaylist, setSelectedPlaylist] = useState(draft.selectedPlaylist || "");
 
-  // Thumbnail States
-  const [thumbFile, setThumbFile] = useState(null);
-  const [thumbPreview, setThumbPreview] = useState(null);
-  const [thumbPrompt, setThumbPrompt] = useState("");
-  const [generatingThumb, setGeneratingThumb] = useState(false);
-  const [thumbAnalysis, setThumbAnalysis] = useState(null);
-  const [analyzingThumb, setAnalyzingThumb] = useState(false);
-  const [thumbExpanded, setThumbExpanded] = useState(false);
+  const [thumbs, setThumbs] = useState([{}, {}, {}]); 
+  const [activeThumbIdx, setActiveThumbIdx] = useState(0);
+  const [thumbWinnerIdx, setThumbWinnerIdx] = useState(0);
 
-  // Video Extraction States
-  const videoRef = useRef(null);
-  // Add this right below your videoRef
-  const [videoUrl, setVideoUrl] = useState("");
+  const updateThumb = (idx, data) => {
+    setThumbs(prev => prev.map((t, i) => i === idx ? { ...t, ...data } : t));
+  };
 
-  // This creates the video link exactly once when you upload a file
   useEffect(() => {
-    if (file) {
-      const url = URL.createObjectURL(file);
-      setVideoUrl(url);
-      return () => URL.revokeObjectURL(url); // Cleans up memory when done
-    } else {
-      setVideoUrl("");
+    if (topic || title || description || tags) {
+      localStorage.setItem('creator_iq_upload_draft', JSON.stringify({
+        topic, title, description, tags, privacy, selectedPlaylist
+      }));
     }
-  }, [file]);
+  }, [topic, title, description, tags, privacy, selectedPlaylist]);
+
+  const handleClearDraft = () => {
+    localStorage.removeItem('creator_iq_upload_draft');
+    setTopic(""); setTitle(""); setDescription(""); setTags(""); setPrivacy("private"); setSelectedPlaylist(""); setThumbs([{}, {}, {}]);
+  };
+
+  const videoRef = useRef(null);
+  const [videoUrl, setVideoUrl] = useState("");
   const [isExtracting, setIsExtracting] = useState(false);
   const [videoDuration, setVideoDuration] = useState(0);
   const [extractTime, setExtractTime] = useState(0);
 
-  // System States
+  useEffect(() => {
+    if (file) {
+      const url = URL.createObjectURL(file);
+      setVideoUrl(url);
+      return () => URL.revokeObjectURL(url);
+    } else {
+      setVideoUrl("");
+    }
+  }, [file]);
+
   const [aiLoading, setAiLoading] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState("");
@@ -64,7 +72,6 @@ export default function UploadPage() {
   const tagsScore = analyzeTags(tags.split(",").filter(Boolean));
   const overallSEO = Math.round((titleScore.score + descScore.score + tagsScore.score) / 3);
 
-  // Helper to format video time (e.g., 65s -> 1:05)
   const formatTime = (seconds) => {
     if (isNaN(seconds)) return "0:00";
     const m = Math.floor(seconds / 60);
@@ -78,34 +85,40 @@ export default function UploadPage() {
     try {
       const suggestions = await generateFreshSEO(type, topic, title, description);
       if (type === "title") setTitle(suggestions[0]);
-      if (type === "description") setDescription(suggestions[0]);
+      if (type === "description") {
+        let newDesc = suggestions[0];
+        const defaultLinks = localStorage.getItem("creator_iq_social_links");
+        if (defaultLinks && defaultLinks.trim()) {
+          newDesc += "\n\n" + defaultLinks.trim();
+        }
+        setDescription(newDesc);
+      }
       if (type === "tags") {
         setTags(Array.isArray(suggestions) ? (suggestions.length > 1 ? suggestions.join(", ") : suggestions[0]) : String(suggestions));
       }
-    } catch (err) { setError(err.message); } 
+    } catch (err) { setError(err.message); }
     finally { setAiLoading(null); }
   };
 
-  // --- THUMBNAIL MANAGERS ---
-  const handleClearThumbnail = () => {
-    setThumbFile(null); setThumbPreview(null); setThumbAnalysis(null); setThumbPrompt(""); setIsExtracting(false);
+  const handleClearThumbnail = (idx) => {
+    updateThumb(idx, { file: null, preview: null, analysis: null, prompt: "" });
+    if (idx === activeThumbIdx) setIsExtracting(false);
   };
 
   const handleFileSelect = (e) => {
     const newFile = e.target.files[0];
     if (newFile) {
       setFile(newFile);
-      handleClearThumbnail(); // Clear old thumbnail if video changes
+      setThumbs([{}, {}, {}]);
     }
   };
 
   const handleThumbUpload = (e) => {
     const imgFile = e.target.files[0];
     if (!imgFile) return;
-    setThumbFile(imgFile); setThumbPreview(URL.createObjectURL(imgFile)); setThumbAnalysis(null);
+    updateThumb(activeThumbIdx, { file: imgFile, preview: URL.createObjectURL(imgFile), analysis: null });
   };
 
-  // --- FRAME EXTRACTOR LOGIC ---
   const handleVideoLoaded = (e) => {
     setVideoDuration(e.target.duration);
     setExtractTime(0);
@@ -123,57 +136,77 @@ export default function UploadPage() {
     if (!videoRef.current) return;
     const video = videoRef.current;
     const canvas = document.createElement("canvas");
-    canvas.width = video.videoWidth; 
+    canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     const ctx = canvas.getContext("2d");
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    
+
     const dataUrl = canvas.toDataURL("image/jpeg", 0.9);
-    setThumbPreview(dataUrl);
-    
+
     fetch(dataUrl).then(res => res.blob()).then(blob => {
-      setThumbFile(new File([blob], "extracted_thumb.jpg", { type: "image/jpeg" }));
-      setThumbAnalysis(null);
+      updateThumb(activeThumbIdx, { preview: dataUrl, file: new File([blob], "extracted_thumb.jpg", { type: "image/jpeg" }), analysis: null });
       setIsExtracting(false);
     });
   };
 
-  // --- AI GENERATION & ANALYSIS ---
   const handleGenerateThumbAI = async () => {
-    if (!thumbPrompt) return setError("Please enter an image prompt first.");
-    setGeneratingThumb(true); setError("");
+    const prompt = thumbs[activeThumbIdx].prompt;
+    if (!prompt) return setError("Please enter an image prompt first.");
+    updateThumb(activeThumbIdx, { generating: true }); setError("");
     try {
-      const base64Str = await generateAIThumbnail(thumbPrompt);
+      const base64Str = await generateAIThumbnail(prompt);
       const dataUrl = `data:image/jpeg;base64,${base64Str}`;
-      setThumbPreview(dataUrl);
-      
       const res = await fetch(dataUrl);
       const blob = await res.blob();
-      setThumbFile(new File([blob], "ai_thumb.jpg", { type: "image/jpeg" }));
-      setThumbAnalysis(null);
-    } catch (err) { setError(err.message); } 
-    finally { setGeneratingThumb(false); }
+      updateThumb(activeThumbIdx, { preview: dataUrl, file: new File([blob], "ai_thumb.jpg", { type: "image/jpeg" }), analysis: null });
+    } catch (err) { setError(err.message); }
+    finally { updateThumb(activeThumbIdx, { generating: false }); }
   };
 
-  const handleAnalyzeThumbnail = async () => {
-    if (!thumbFile) return;
-    setAnalyzingThumb(true); setThumbAnalysis(null); setError("");
-    const reader = new FileReader();
-    reader.onloadend = async () => {
-      try {
-        const result = await analyzeThumbnailWithAI(reader.result.split(',')[1], thumbFile.type);
-        setThumbAnalysis(result); setThumbExpanded(false);
-      } catch (err) { setError("Analysis Failed: " + err.message); } 
-      finally { setAnalyzingThumb(false); }
-    };
-    reader.readAsDataURL(thumbFile);
+  const handleAnalyzeAllCandidates = async () => {
+    const runners = thumbs.filter(t => t.file);
+    if (runners.length === 0) return setError("Add at least one thumbnail to analyze.");
+
+    setThumbs(prev => prev.map(t => (t.file && !t.analysis) ? { ...t, analyzing: true } : t));
+    setError("");
+
+    const newThumbs = [...thumbs];
+
+    await Promise.all(newThumbs.map(async (t, i) => {
+      if (!t.file || t.analysis) return;
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = async () => {
+          try {
+            newThumbs[i].analysis = await analyzeThumbnailWithAI(reader.result.split(',')[1], t.file.type);
+          } catch (err) { }
+          finally {
+            newThumbs[i].analyzing = false;
+            resolve();
+          }
+        };
+        reader.readAsDataURL(t.file);
+      });
+    }));
+
+    let bestScore = -1;
+    let bestIdx = 0;
+    newThumbs.forEach((t, i) => {
+      if (t.analysis?.score > bestScore) {
+        bestScore = t.analysis.score;
+        bestIdx = i;
+      }
+    });
+
+    setThumbWinnerIdx(bestIdx);
+    setThumbs(newThumbs);
   };
 
   const handleUpload = async () => {
     if (!file) return setError("Please select a video file.");
     if (!title || !description) return setError("Title and Description are required.");
     setError(""); setUploading(true); setUploadProgress("Uploading video file...");
-    
+
     const token = localStorage.getItem("creator_iq_token");
     const metadata = {
       snippet: { title, description, tags: tags.split(",").map(t => t.trim()).filter(Boolean), categoryId: "22" },
@@ -186,237 +219,251 @@ export default function UploadPage() {
         setUploadProgress("Adding to playlist...");
         await addVideoToPlaylist(selectedPlaylist, res.id, token);
       }
+
+      const winnerThumb = thumbs[thumbWinnerIdx]?.file;
+      if (winnerThumb) {
+        setUploadProgress("Uploading winning thumbnail...");
+        await uploadCustomThumbnail(res.id, winnerThumb, token);
+      }
+
       setSuccessId(res.id); setUploadProgress("");
-      setFile(null); setTitle(""); setDescription(""); setTags(""); setTopic(""); setSelectedPlaylist(""); handleClearThumbnail();
-    } catch (err) { setError(err.message); setUploadProgress(""); } 
+      setFile(null); setTitle(""); setDescription(""); setTags(""); setTopic(""); setSelectedPlaylist(""); setThumbs([{}, {}, {}]);
+    } catch (err) { setError(err.message); setUploadProgress(""); }
     finally { setUploading(false); }
   };
 
   return (
-    <div className="page fade-in" style={{ paddingBottom: 60 }}>
-      {/* PAGE HEADER */}
-      <div style={{ marginBottom: 32 }}>
-        <h1 className="heading-xl mb-8" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <UploadCloud color="var(--accent)" size={32} /> Upload Studio
-        </h1>
-        <p className="text-muted text-sm">Prepare, optimize, and publish your content with a 100% SEO score.</p>
+    <div className="page fade-in" style={{ paddingBottom: 60, maxWidth: 1400, margin: '0 auto' }}>
+      
+      {/* HEADER DIVIDER */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid var(--border)', paddingBottom: 24, marginBottom: 32 }}>
+        <div>
+          <h1 style={{ fontSize: 32, fontWeight: 600, letterSpacing: '-0.02em', marginBottom: 8, color: 'var(--text)' }}>Upload Studio</h1>
+          <p style={{ fontSize: 14, color: 'var(--text-muted)' }}>Publish directly to YouTube with AI-optimized metadata & A/B scored thumbnails.</p>
+        </div>
+        <button className="btn btn-primary" onClick={handleUpload} disabled={uploading || !file} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {uploading ? <Spinner size={16} /> : <><UploadCloud size={16} /> Publish to YouTube</>}
+        </button>
       </div>
 
-      {/* ALERTS */}
-      {error && <div className="error-box mb-24"><AlertTriangle size={18} /> {error}</div>}
-      {successId && (
-        <div style={{ background: "#EAF4EA", color: "#057642", padding: 16, borderRadius: 8, fontSize: 14, marginBottom: 24, display: 'flex', alignItems: 'center', gap: 8, border: '1px solid #CDE2CD' }}>
-          <CheckCircle2 size={18} /> Upload Complete! <a href={`https://studio.youtube.com/video/${successId}/edit`} target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent)", fontWeight: 600 }}>Edit in YouTube Studio &rarr;</a>
+      {(topic || title || description) && (
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 16, border: '1px solid var(--success-border)', background: 'var(--success-bg)', borderRadius: 'var(--radius-md)', marginBottom: 24 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <CheckCircle2 color="var(--success-text)" size={20} />
+            <div>
+              <div style={{ fontWeight: 600, color: 'var(--success-text)', fontSize: 14 }}>Draft Available</div>
+              <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Unsaved edits detected on this device.</div>
+            </div>
+          </div>
+          <button className="btn btn-secondary btn-sm" onClick={handleClearDraft} style={{ color: 'var(--error-text)' }}>Discard Draft</button>
         </div>
       )}
 
-      {/* MAIN LAYOUT GRID */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 32, alignItems: 'start' }}>
+      {error && <div style={{ padding: 16, background: 'var(--error-bg)', color: 'var(--error-text)', border: '1px solid var(--error-border)', borderRadius: 'var(--radius-md)', marginBottom: 24, display: 'flex', alignItems: 'center', gap: 8 }}><AlertTriangle size={16} /> {error}</div>}
+      {successId && (
+        <div style={{ padding: 16, background: 'var(--success-bg)', color: 'var(--success-text)', border: '1px solid var(--success-border)', borderRadius: 'var(--radius-md)', marginBottom: 24, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <CheckCircle2 size={16} /> Upload Complete! <a href={`https://studio.youtube.com/video/${successId}/edit`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--success-text)', fontWeight: 600, textDecoration: 'underline' }}>Edit in YouTube Studio &rarr;</a>
+        </div>
+      )}
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(400px, 1fr) minmax(300px, 350px)', gap: 40 }}>
         
-        {/* ========================================== */}
-        {/* LEFT PANE: MEDIA & CONTENT WORKSPACE         */}
-        {/* ========================================== */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+        {/* LEFT PANE */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 40 }}>
           
-          {/* 1. MEDIA SECTION (Video + Thumbnail) */}
-          <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-            <h3 className="heading-md" style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Video size={18} className="text-muted"/> Primary Media</h3>
-            
-            {/* Video Uploader */}
-            <div style={{ padding: 32, textAlign: 'center', border: '2px dashed var(--border-strong)', borderRadius: 12, background: file ? '#F4FAFF' : 'var(--surface)' }}>
-              <input type="file" accept="video/mp4,video/x-m4v,video/*" id="video-upload" style={{ display: 'none' }} onChange={handleFileSelect} />
-              <label htmlFor="video-upload" style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
-                <div style={{ width: 56, height: 56, background: file ? 'var(--accent)' : 'var(--surface-2)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: file ? '#fff' : 'var(--accent)', transition: 'all 0.2s ease' }}>
-                  {file ? <CheckCircle2 size={28} /> : <UploadCloud size={28} />}
-                </div>
-                <div>
-                  <div style={{ fontWeight: 600, fontSize: 16, color: file ? 'var(--accent)' : 'var(--text)' }}>{file ? file.name : "Select video file"}</div>
-                  {!file && <div style={{ fontSize: 13, color: 'var(--text-light)', marginTop: 4 }}>MP4, MOV, or AVI</div>}
-                </div>
-              </label>
-            </div>
-
-            {/* Thumbnail Studio */}
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                <label style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Thumbnail Studio</label>
-                {(thumbPreview || isExtracting) && (
-                  <button onClick={handleClearThumbnail} style={{ background: 'none', border: 'none', color: 'var(--text-light)', cursor: 'pointer', fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <X size={14}/> Clear
-                  </button>
-                )}
-              </div>
-
-              {isExtracting ? (
-                /* --- STATE 1: VIDEO SCRUBBER --- */
-                <div style={{ background: 'var(--surface-2)', padding: 16, borderRadius: 12, display: 'flex', flexDirection: 'column', gap: 16 }}>
-                  <video 
-                    ref={videoRef} 
-                    src={videoUrl} 
-                    preload="auto"
-                    onLoadedMetadata={handleVideoLoaded} 
-                    style={{ width: '100%', borderRadius: 8, background: '#000', aspectRatio: '16/9' }} 
-                  />
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', minWidth: 36 }}>{formatTime(extractTime)}</span>
-                    <input 
-                      type="range" min="0" max={videoDuration} step="0.1" 
-                      value={extractTime} onChange={handleSliderChange} 
-                      style={{ flex: 1, cursor: 'pointer', accentColor: 'var(--accent)' }} 
-                    />
-                    <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', minWidth: 36 }}>{formatTime(videoDuration)}</span>
-                  </div>
-                  <div style={{ display: 'flex', gap: 12 }}>
-                    <button className="btn btn-secondary" onClick={() => setIsExtracting(false)} style={{ flex: 1 }}>Cancel</button>
-                    <button className="btn btn-primary" onClick={captureFrame} style={{ flex: 2 }}><Crop size={16} style={{ marginRight: 6 }}/> Capture Frame</button>
-                  </div>
-                </div>
-              ) : !thumbPreview ? (
-                /* --- STATE 2: MENU OPTIONS --- */
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
-                  <label htmlFor="thumb-upload" className="btn btn-secondary" style={{ display: 'flex', flexDirection: 'column', gap: 8, height: 90, justifyContent: 'center', padding: '16px 8px' }}>
-                    <ImagePlus size={20} color="var(--accent)" />
-                    <span style={{ fontSize: 12 }}>Upload File</span>
-                    <input type="file" accept="image/jpeg,image/png,image/webp" id="thumb-upload" style={{ display: 'none' }} onChange={handleThumbUpload} />
+          {/* MEDIA WORKSPACE */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+             <h3 style={{ fontSize: 18, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8, borderBottom: '1px solid var(--border)', paddingBottom: 12 }}><Video size={18} className="text-muted" /> Source Media</h3>
+             
+             {!file ? (
+                <div style={{ padding: 48, textAlign: 'center', border: '1px dashed var(--border-strong)', borderRadius: 'var(--radius-lg)', background: 'var(--surface)' }}>
+                  <input type="file" accept="video/mp4,video/x-m4v,video/*" id="video-upload" style={{ display: 'none' }} onChange={handleFileSelect} />
+                  <label htmlFor="video-upload" style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+                    <div style={{ width: 64, height: 64, background: 'var(--surface-hover)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
+                      <UploadCloud size={32} />
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: 16, color: 'var(--text)' }}>Click to browse or drag & drop</div>
+                      <div style={{ fontSize: 13, color: 'var(--text-light)', marginTop: 4 }}>MP4, MOV, or AVI up to 128GB</div>
+                    </div>
                   </label>
-                  
-                  <button className="btn btn-secondary" onClick={() => { if(!file) setError("Please upload a video first."); else setIsExtracting(true); }} disabled={!file} style={{ display: 'flex', flexDirection: 'column', gap: 8, height: 90, justifyContent: 'center', padding: '16px 8px' }}>
-                    <Crop size={20} color={file ? "var(--accent)" : "var(--text-light)"} />
-                    <span style={{ fontSize: 12 }}>Extract Frame</span>
-                  </button>
-                  
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, height: 90 }}>
-                    <input className="form-input" placeholder="AI Prompt..." value={thumbPrompt} onChange={e => setThumbPrompt(e.target.value)} style={{ height: '50%', padding: '4px 8px', fontSize: 11, background: 'var(--surface-2)', border: 'none' }} />
-                    <button className="btn btn-primary" onClick={handleGenerateThumbAI} disabled={generatingThumb || !thumbPrompt} style={{ height: '50%', fontSize: 11, padding: 0 }}>
-                      {generatingThumb ? <Spinner size={14} /> : <><Sparkles size={12} style={{ marginRight: 4 }}/> Generate</>}
-                    </button>
-                  </div>
                 </div>
               ) : (
-                /* --- STATE 3: PREVIEW & AI ANALYSIS --- */
-                <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', background: 'var(--surface-2)', padding: 16, borderRadius: 12 }}>
-                  <div style={{ width: '40%', flexShrink: 0 }}>
-                    <img src={thumbPreview} alt="Preview" style={{ width: '100%', borderRadius: 8, border: '1px solid var(--border)', aspectRatio: '16/9', objectFit: 'cover' }} />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <div style={{ borderRadius: 'var(--radius-md)', overflow: 'hidden', background: 'var(--surface-hover)', border: '1px solid var(--border)' }}>
+                     <video ref={videoRef} src={videoUrl} controls={!isExtracting} preload="auto" onLoadedMetadata={handleVideoLoaded} style={{ width: '100%', display: 'block', aspectRatio: '16/9' }} />
                   </div>
-                  <div style={{ flex: 1 }}>
-                    {!thumbAnalysis && !analyzingThumb && (
-                      <button className="btn btn-primary" onClick={handleAnalyzeThumbnail} style={{ width: '100%' }}>
-                        <Wand2 size={16} style={{ marginRight: 6 }}/> Calculate CTR Score
-                      </button>
-                    )}
-                    {analyzingThumb && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--accent)', fontSize: 13, fontWeight: 600, padding: 12 }}>
-                        <Spinner size={16} /> Analyzing visual impact...
-                      </div>
-                    )}
-                    {thumbAnalysis && (
-                      <div style={{ background: 'var(--card)', border: `1px solid ${thumbAnalysis.score >= 70 ? '#CDE2CD' : '#F1B2B5'}`, borderRadius: 8, padding: 12 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                          <span style={{ fontWeight: 600, fontSize: 12, color: thumbAnalysis.score >= 70 ? '#057642' : '#CC1016', textTransform: 'uppercase' }}>CTR Score</span>
-                          <span style={{ fontWeight: 800, fontSize: 18, color: thumbAnalysis.score >= 70 ? '#057642' : '#CC1016' }}>{thumbAnalysis.score}/100</span>
-                        </div>
-                        <ul style={{ margin: 0, paddingLeft: 16, fontSize: 12, color: 'var(--text)', lineHeight: 1.5 }}>
-                          {(thumbExpanded ? thumbAnalysis.feedback : thumbAnalysis.feedback?.slice(0, 2)).map((f, i) => <li key={i}>{f}</li>)}
-                        </ul>
-                        {thumbAnalysis.feedback?.length > 2 && (
-                          <div onClick={() => setThumbExpanded(!thumbExpanded)} style={{ cursor: 'pointer', color: 'var(--accent)', fontSize: 11, fontWeight: 700, marginTop: 8, textAlign: 'center' }}>
-                            {thumbExpanded ? "Show Less" : "Show More"}
-                          </div>
-                        )}
-                      </div>
-                    )}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>{file.name}</div>
+                    <label htmlFor="video-change" style={{ cursor: 'pointer', fontSize: 12, color: 'var(--text-muted)', fontWeight: 500, background: 'var(--surface-hover)', padding: '4px 12px', borderRadius: 'var(--radius-full)' }}>
+                      Replace File
+                      <input type="file" accept="video/mp4,video/x-m4v,video/*" id="video-change" style={{ display: 'none' }} onChange={handleFileSelect} />
+                    </label>
                   </div>
                 </div>
               )}
-            </div>
+
+              {file && (
+                <div>
+                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: '1px solid var(--border)', paddingBottom: 12, marginBottom: 24, marginTop: 16 }}>
+                     <h3 style={{ fontSize: 18, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}><ImageIcon size={18} className="text-muted" /> A/B Thumbnails</h3>
+                     <button className="btn btn-secondary btn-sm" onClick={handleAnalyzeAllCandidates} disabled={thumbs.filter(t => t.file).length < 2 || thumbs.some(t => t.analyzing)} style={{ padding: '6px 12px' }}>
+                       {thumbs.some(t => t.analyzing) ? <Spinner size={14} /> : "Analyze Variants"}
+                     </button>
+                   </div>
+
+                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
+                     {thumbs.map((thumb, idx) => (
+                       <div key={idx} onClick={() => setActiveThumbIdx(idx)} style={{ cursor: 'pointer' }}>
+                         <div style={{ width: '100%', aspectRatio: '16/9', border: activeThumbIdx === idx ? '2px solid var(--accent)' : '2px solid transparent', borderRadius: 'var(--radius-md)', overflow: 'hidden', background: 'var(--surface)', position: 'relative', outline: '1px solid var(--border)' }}>
+                           {thumb.preview ? (
+                             <>
+                               <img src={thumb.preview} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                               {thumbWinnerIdx === idx && <div style={{ position: 'absolute', top: 6, left: 6, background: 'var(--success-text)', color: 'var(--bg)', fontSize: 10, padding: '2px 6px', borderRadius: 'var(--radius-sm)', fontWeight: 600 }}>Best CTR</div>}
+                               {thumb.analysis && (
+                                 <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'rgba(0,0,0,0.7)', color: getScoreColor(thumb.analysis.score), padding: '4px 8px', fontSize: 12, fontWeight: 700, textAlign: 'center' }}>
+                                   Score: {thumb.analysis.score}
+                                 </div>
+                               )}
+                               <button onClick={(e) => { e.stopPropagation(); handleClearThumbnail(idx); }} style={{ position: 'absolute', top: 6, right: 6, background: 'rgba(0,0,0,0.5)', color: '#fff', border: 'none', borderRadius: '50%', width: 20, height: 20, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={12} /></button>
+                             </>
+                           ) : (
+                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-light)' }}>
+                                {thumb.generating ? <Spinner size={20} /> : <ImagePlus size={20} />}
+                             </div>
+                           )}
+                         </div>
+                       </div>
+                     ))}
+                   </div>
+                   
+                   {/* Editor Panel for Active Slot */}
+                   {activeThumbIdx !== null && (
+                     <div className="fade-in" style={{ marginTop: 24 }}>
+                        {isExtracting ? (
+                          <div style={{ background: 'var(--surface)', padding: 16, borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}>
+                            <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)', marginBottom: 12 }}>Seek to capture frame:</div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+                              <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{formatTime(extractTime)}</span>
+                              <input type="range" min="0" max={videoDuration} step="0.1" value={extractTime} onChange={handleSliderChange} style={{ flex: 1 }} />
+                            </div>
+                            <div style={{ display: 'flex', gap: 12 }}>
+                              <button className="btn btn-secondary" onClick={() => setIsExtracting(false)}>Cancel</button>
+                              <button className="btn btn-primary" onClick={captureFrame}>Capture Frame</button>
+                            </div>
+                          </div>
+                        ) : !thumbs[activeThumbIdx].preview ? (
+                           <div style={{ display: 'flex', gap: 16 }}>
+                              <label className="btn btn-secondary" style={{ flexShrink: 0, height: 40, cursor: 'pointer' }}>
+                                <ImagePlus size={16} /> Upload Image
+                                <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleThumbUpload} />
+                              </label>
+                              <button className="btn btn-secondary" onClick={() => setIsExtracting(true)} style={{ flexShrink: 0, height: 40 }}><Crop size={16} /> Capture Frame</button>
+                              <div style={{ flex: 1, display: 'flex', alignItems: 'center', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', padding: 4 }}>
+                                 <input className="form-input" placeholder="Or enter AI prompt..." value={thumbs[activeThumbIdx].prompt || ""} onChange={(e) => updateThumb(activeThumbIdx, { prompt: e.target.value })} style={{ border: 'none', height: '100%', background: 'transparent' }} />
+                                 <button className="btn btn-ai btn-sm" onClick={handleGenerateThumbAI} disabled={thumbs[activeThumbIdx].generating || !thumbs[activeThumbIdx].prompt} style={{ borderRadius: 'var(--radius-sm)' }}>
+                                   {thumbs[activeThumbIdx].generating ? <Spinner size={14} /> : "Generate"}
+                                 </button>
+                              </div>
+                           </div>
+                        ) : thumbs[activeThumbIdx].analysis && (
+                           <div style={{ background: 'var(--surface)', padding: 16, borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}>
+                             <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-muted)' }}>AI Feedback</div>
+                             <ul style={{ fontSize: 13, margin: '8px 0 0 16px', color: 'var(--text)' }}>
+                               {thumbs[activeThumbIdx].analysis.feedback.map((f, i) => <li key={i}>{f}</li>)}
+                             </ul>
+                           </div>
+                        )}
+                     </div>
+                   )}
+                </div>
+              )}
           </div>
 
-          {/* 2. AI CONTENT ENGINE */}
-          <div className="card">
-            <h3 className="heading-md mb-20" style={{ display: 'flex', alignItems: 'center', gap: 8 }}><LayoutList size={18} className="text-muted"/> Metadata & SEO</h3>
-            
-            <div style={{ background: 'var(--surface-2)', padding: 16, borderRadius: 8, marginBottom: 24, display: 'flex', gap: 12, alignItems: 'center' }}>
-              <Sparkles size={20} color="var(--accent)" style={{ flexShrink: 0 }} />
-              <input className="form-input" placeholder="What is this video about? (e.g. Building a Minecraft base)" value={topic} onChange={e => setTopic(e.target.value)} style={{ background: 'var(--card)', border: 'none', flex: 1 }} />
-            </div>
+          {/* AI CONTENT ENGINE */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+             <h3 style={{ fontSize: 18, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8, borderBottom: '1px solid var(--border)', paddingBottom: 12 }}><LayoutList size={18} className="text-muted" /> Metadata Editor</h3>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 8 }}>
-                  <label style={{ fontSize: 13, fontWeight: 600 }}>Video Title</label>
-                  <button className="btn btn-secondary btn-sm" onClick={() => handleGenerateText("title")} disabled={aiLoading === "title"}><Wand2 size={12}/> Auto-Write</button>
-                </div>
-                <input className="form-input" value={title} onChange={e => setTitle(e.target.value)} placeholder="Catchy, highly clickable title" />
-              </div>
+             <div className="form-group mb-0">
+               <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Sparkles size={14} className="text-accent" /> Brainstorming Topic</label>
+               <input className="form-input" placeholder="e.g. Building a cozy cabin in the woods" value={topic} onChange={e => setTopic(e.target.value)} />
+             </div>
 
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 8 }}>
-                  <label style={{ fontSize: 13, fontWeight: 600 }}>Description</label>
-                  <button className="btn btn-secondary btn-sm" onClick={() => handleGenerateText("description")} disabled={aiLoading === "description"}><Wand2 size={12}/> Auto-Write</button>
-                </div>
-                <textarea className="form-input" rows={6} value={description} onChange={e => setDescription(e.target.value)} placeholder="Hook, summary, timestamps, and links" />
-              </div>
+             <div className="form-group">
+               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                 <label className="form-label">Video Title</label>
+                 <button className="btn btn-secondary btn-sm" onClick={() => handleGenerateText("title")} disabled={aiLoading === "title"} style={{ padding: '4px 12px', fontSize: 11, border: 'none', background: 'var(--surface-hover)' }}>{aiLoading === 'title' ? <Spinner size={12} /> : "Auto-Write"}</button>
+               </div>
+               <input className="form-input" value={title} onChange={e => setTitle(e.target.value)} style={{ fontSize: 16, fontWeight: 500 }} />
+             </div>
 
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 8 }}>
-                  <label style={{ fontSize: 13, fontWeight: 600 }}>Keywords & Tags</label>
-                  <button className="btn btn-secondary btn-sm" onClick={() => handleGenerateText("tags")} disabled={aiLoading === "tags"}><Wand2 size={12}/> Auto-Extract</button>
-                </div>
-                <input className="form-input" value={tags} onChange={e => setTags(e.target.value)} placeholder="comma, separated, tags" />
-              </div>
-            </div>
+             <div className="form-group">
+               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                 <label className="form-label">Description</label>
+                 <button className="btn btn-secondary btn-sm" onClick={() => handleGenerateText("description")} disabled={aiLoading === "description"} style={{ padding: '4px 12px', fontSize: 11, border: 'none', background: 'var(--surface-hover)' }}>{aiLoading === 'description' ? <Spinner size={12} /> : "Auto-Write"}</button>
+               </div>
+               <textarea className="form-input" rows={6} value={description} onChange={e => setDescription(e.target.value)} style={{ fontSize: 14, fontFamily: 'var(--font-mono)' }} />
+             </div>
+
+             <div className="form-group mb-0">
+               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                 <label className="form-label">Keywords & Tags</label>
+                 <button className="btn btn-secondary btn-sm" onClick={() => handleGenerateText("tags")} disabled={aiLoading === "tags"} style={{ padding: '4px 12px', fontSize: 11, border: 'none', background: 'var(--surface-hover)' }}>{aiLoading === 'tags' ? <Spinner size={12} /> : "Auto-Extract"}</button>
+               </div>
+               <input className="form-input" value={tags} onChange={e => setTags(e.target.value)} placeholder="comma, separated, tags" />
+             </div>
           </div>
+
         </div>
 
-        {/* ========================================== */}
-        {/* RIGHT PANE: SETTINGS & PUBLISHING (Sticky) */}
-        {/* ========================================== */}
-        <div style={{ position: 'sticky', top: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
-          
-          {/* SEO Score Tracker */}
-          <div className="card" style={{ display: 'flex', alignItems: 'center', gap: 20, padding: 24 }}>
-            <ScoreCircle score={overallSEO} size={80} />
-            <div>
-              <div style={{ fontSize: 13, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>SEO Readiness</div>
-              <div style={{ fontSize: 24, fontWeight: 800, color: getScoreColor(overallSEO) }}>{overallSEO}%</div>
-            </div>
-          </div>
+        {/* RIGHT PANE: settings */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
 
-          {/* Visibility & Playlist */}
-          <div className="card">
-            <h3 className="heading-md mb-16" style={{ fontSize: 15 }}>Video Settings</h3>
-            
-            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 8, display: 'block' }}>Add to Playlist</label>
-            <select className="form-input mb-24" value={selectedPlaylist} onChange={(e) => setSelectedPlaylist(e.target.value)} style={{ cursor: 'pointer', background: 'var(--surface-2)', border: 'none' }}>
-              <option value="">None</option>
-              {allPlaylists.map(p => <option key={p.id} value={p.id}>{p.title}</option>)}
-            </select>
+           {/* Score Card */}
+           <div style={{ display: 'flex', alignItems: 'center', gap: 20, background: 'var(--surface)', padding: 24, borderRadius: 'var(--radius-lg)', border: '1px solid var(--border)' }}>
+             <ScoreCircle score={overallSEO} size={64} />
+             <div>
+               <div style={{ fontSize: 13, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>SEO Readiness</div>
+               <div style={{ fontSize: 24, fontWeight: 800, color: getScoreColor(overallSEO) }}>{overallSEO}%</div>
+             </div>
+           </div>
 
-            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 8, display: 'block' }}>Visibility</label>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {[{ id: 'private', icon: Lock, label: 'Private', desc: 'Only you can view' }, 
-                { id: 'unlisted', icon: Link, label: 'Unlisted', desc: 'Anyone with link' }, 
+           {/* Settings */}
+           <div>
+             <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16, borderBottom: '1px solid var(--border)', paddingBottom: 8 }}>Visibility Settings</h3>
+             
+             <div className="form-group mb-24">
+               <label className="form-label">Add to Playlist</label>
+               <select className="form-input" value={selectedPlaylist} onChange={(e) => setSelectedPlaylist(e.target.value)}>
+                 <option value="">None</option>
+                 {allPlaylists.map(p => <option key={p.id} value={p.id}>{p.title}</option>)}
+               </select>
+             </div>
+
+             <label className="form-label">Visibility Status</label>
+             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {[{ id: 'private', icon: Lock, label: 'Private', desc: 'Only you can view' },
+                { id: 'unlisted', icon: Link, label: 'Unlisted', desc: 'Anyone with link' },
                 { id: 'public', icon: Globe, label: 'Public', desc: 'Live to everyone' }].map(item => (
-                <div key={item.id} onClick={() => setPrivacy(item.id)} style={{ display: 'flex', gap: 12, padding: 12, border: privacy === item.id ? '2px solid var(--accent)' : '1px solid var(--border)', borderRadius: 8, cursor: 'pointer', background: privacy === item.id ? 'var(--card)' : 'transparent', alignItems: 'center' }}>
-                  <item.icon size={18} color={privacy === item.id ? 'var(--accent)' : 'var(--text-muted)'} /> 
-                  <div>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: privacy === item.id ? 'var(--accent)' : 'var(--text)' }}>{item.label}</div>
-                    <div style={{ fontSize: 11, color: privacy === item.id ? 'var(--accent)' : 'var(--text-muted)', opacity: 0.8 }}>{item.desc}</div>
+                  <div key={item.id} onClick={() => setPrivacy(item.id)} style={{ display: 'flex', gap: 12, padding: 12, border: privacy === item.id ? '2px solid var(--accent)' : '1px solid var(--border)', borderRadius: 'var(--radius-md)', cursor: 'pointer', background: privacy === item.id ? 'var(--bg)' : 'var(--surface)', alignItems: 'center' }}>
+                    <item.icon size={18} color={privacy === item.id ? 'var(--accent)' : 'var(--text-muted)'} />
+                    <div>
+                      <div style={{ fontSize: 14, fontWeight: 500, color: privacy === item.id ? 'var(--text)' : 'var(--text-muted)' }}>{item.label}</div>
+                    </div>
                   </div>
-                </div>
               ))}
-            </div>
-          </div>
+             </div>
+           </div>
 
-          {/* Publish Action */}
-          <div className="card" style={{ background: 'var(--card)'}}>
-            <button className="btn btn-primary" style={{ width: '100%', padding: 16, fontSize: 16, display: 'flex', justifyContent: 'center', gap: 8, boxShadow: '0 4px 12px rgba(10, 102, 194, 0.2)' }} onClick={handleUpload} disabled={uploading}>
-              {uploading ? <Spinner size={20} /> : <><UploadCloud size={20} /> Publish to YouTube</>}
-            </button>
-            {uploadProgress && <div style={{ fontSize: 12, color: 'var(--accent)', marginTop: 12, textAlign: 'center', fontWeight: 600 }}>{uploadProgress}</div>}
-          </div>
-
+           {/* Publish block */}
+           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {uploadProgress && <div style={{ fontSize: 13, color: 'var(--text-muted)', textAlign: 'center', fontWeight: 500 }}>{uploadProgress}</div>}
+              <button className="btn btn-primary" onClick={handleUpload} disabled={uploading || !file} style={{ width: '100%', padding: '16px', fontSize: 16, justifyContent: 'center' }}>
+                {uploading ? <Spinner size={20} /> : <><UploadCloud size={20} /> Publish to YouTube</>}
+              </button>
+           </div>
         </div>
+
       </div>
     </div>
   );
