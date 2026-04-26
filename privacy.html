@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Privacy Policy — CreatorIQ</title>
+  <link rel="icon" type="image/png" href="/creatoriq/ciq-logo.png" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #0f0f11; color: #e0e0e6;
+      line-height: 1.7; padding: 0;
+    }
+    .hero {
+      background: linear-gradient(135deg, #1a1a2e 0%, #0f0f11 100%);
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      padding: 60px 24px 48px;
+      text-align: center;
+    }
+    .hero-logo {
+      display: inline-flex; align-items: center; gap: 12px;
+      margin-bottom: 24px; text-decoration: none;
+    }
+    .hero-logo img { width: 36px; height: 36px; border-radius: 8px; }
+    .hero-logo span { font-size: 20px; font-weight: 700; color: #fff; }
+    .hero h1 {
+      font-size: clamp(28px, 5vw, 40px); font-weight: 700;
+      background: linear-gradient(135deg, #7c5cfc, #00d4ff);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      margin-bottom: 8px;
+    }
+    .hero p { color: #888; font-size: 14px; }
+    .container { max-width: 720px; margin: 0 auto; padding: 48px 24px 80px; }
+    h2 {
+      font-size: 20px; font-weight: 600; color: #fff;
+      margin-top: 40px; margin-bottom: 12px;
+      padding-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+    h3 { font-size: 16px; font-weight: 600; color: #c0c0cc; margin-top: 24px; margin-bottom: 8px; }
+    p, li { font-size: 14px; color: #a0a0b0; margin-bottom: 12px; }
+    ul { padding-left: 20px; }
+    li { margin-bottom: 8px; }
+    a { color: #7c5cfc; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .badge {
+      display: inline-block; background: rgba(124,92,252,0.12);
+      color: #7c5cfc; font-size: 11px; font-weight: 600;
+      padding: 4px 10px; border-radius: 20px; margin-bottom: 16px;
+    }
+    .footer {
+      text-align: center; padding: 32px 24px;
+      border-top: 1px solid rgba(255,255,255,0.06);
+      font-size: 12px; color: #555;
+    }
+    .back-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(124,92,252,0.1); color: #7c5cfc;
+      border: 1px solid rgba(124,92,252,0.2); border-radius: 8px;
+      padding: 10px 20px; font-size: 13px; font-weight: 600;
+      text-decoration: none; margin-top: 32px; transition: all 0.2s;
+    }
+    .back-btn:hover { background: rgba(124,92,252,0.2); text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="hero">
+    <a href="/creatoriq/" class="hero-logo">
+      <img src="/creatoriq/ciq-logo.png" alt="CreatorIQ" />
+      <span>CreatorIQ</span>
+    </a>
+    <h1>Privacy Policy</h1>
+    <p>Last updated: April 26, 2026</p>
+  </div>
+
+  <div class="container">
+    <span class="badge">Your Privacy Matters</span>
+
+    <h2>1. Introduction</h2>
+    <p>CreatorIQ ("we", "our", or "the Application") is an open-source, client-side web application that helps YouTube content creators optimize their video metadata, SEO, and audience engagement using AI-powered tools. This Privacy Policy explains how we collect, use, and protect your information.</p>
+
+    <h2>2. Information We Collect</h2>
+
+    <h3>2.1 Google Account Data</h3>
+    <p>When you sign in with Google, we receive the following through the YouTube Data API v3:</p>
+    <ul>
+      <li><strong>Channel Information:</strong> Channel name, profile picture, subscriber count, and video statistics.</li>
+      <li><strong>Video Data:</strong> Titles, descriptions, tags, thumbnails, view counts, and engagement metrics for your uploaded videos.</li>
+      <li><strong>Comments:</strong> Comments on your videos, including author names and comment text.</li>
+    </ul>
+
+    <h3>2.2 API Keys</h3>
+    <p>You may optionally provide a Google Gemini API key to unlock AI-powered features. This key is stored exclusively in your browser's <code>localStorage</code> and is <strong>never transmitted to any server we operate</strong>.</p>
+
+    <h3>2.3 Usage Data</h3>
+    <p>We do <strong>not</strong> collect analytics, tracking cookies, or any behavioral data. CreatorIQ is a fully client-side application with no backend server.</p>
+
+    <h2>3. How We Use Your Information</h2>
+    <ul>
+      <li>To display your YouTube channel dashboard and video analytics.</li>
+      <li>To provide AI-powered SEO suggestions, title generation, and comment reply drafting.</li>
+      <li>To enable video metadata editing and bulk optimization directly through the YouTube API.</li>
+    </ul>
+    <p>All data processing happens <strong>entirely within your browser</strong>. We do not store, log, or transmit your data to any external server beyond YouTube's and Google's official APIs.</p>
+
+    <h2>4. Data Storage</h2>
+    <p>All user data (OAuth tokens, API keys, preferences) is stored locally in your browser's <code>localStorage</code>. No data is stored on any remote server operated by CreatorIQ.</p>
+
+    <h2>5. Third-Party Services</h2>
+    <p>CreatorIQ interacts with the following third-party services:</p>
+    <ul>
+      <li><strong>Google OAuth 2.0:</strong> For authentication and authorization.</li>
+      <li><strong>YouTube Data API v3:</strong> For reading and writing video metadata, comments, and channel data.</li>
+      <li><strong>Google Gemini API:</strong> For AI-powered content generation (only when you provide your own API key).</li>
+    </ul>
+    <p>Each of these services is governed by <a href="https://policies.google.com/privacy" target="_blank">Google's Privacy Policy</a>.</p>
+
+    <h2>6. Data Sharing</h2>
+    <p>We do <strong>not</strong> sell, trade, or share your personal information with any third parties. Your data flows directly between your browser and Google's APIs.</p>
+
+    <h2>7. Data Retention & Deletion</h2>
+    <p>Since all data is stored locally in your browser:</p>
+    <ul>
+      <li>You can delete all stored data by clearing your browser's local storage or by clicking "Sign Out" within the application.</li>
+      <li>You can revoke CreatorIQ's access to your Google account at any time via <a href="https://myaccount.google.com/permissions" target="_blank">Google Account Permissions</a>.</li>
+    </ul>
+
+    <h2>8. Security</h2>
+    <p>We take reasonable measures to protect your information:</p>
+    <ul>
+      <li>All communication with Google APIs uses HTTPS encryption.</li>
+      <li>OAuth tokens are stored securely in your browser and are never exposed to third parties.</li>
+      <li>API keys are masked in the UI and stored only in <code>localStorage</code>.</li>
+    </ul>
+
+    <h2>9. Children's Privacy</h2>
+    <p>CreatorIQ is not intended for use by children under the age of 13. We do not knowingly collect personal information from children.</p>
+
+    <h2>10. Changes to This Policy</h2>
+    <p>We may update this Privacy Policy from time to time. Any changes will be reflected on this page with an updated "Last updated" date.</p>
+
+    <h2>11. Contact Us</h2>
+    <p>If you have any questions about this Privacy Policy, please reach out via our <a href="https://github.com/SuyogMahagaonkar/creatoriq/issues" target="_blank">GitHub Issues</a> page.</p>
+
+    <a href="/creatoriq/" class="back-btn">← Back to CreatorIQ</a>
+  </div>
+
+  <div class="footer">
+    &copy; 2026 CreatorIQ. All rights reserved.
+  </div>
+</body>
+</html>
