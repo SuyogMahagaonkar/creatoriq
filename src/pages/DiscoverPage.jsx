@@ -54,7 +54,7 @@ export default function DiscoverPage() {
       </div>
 
       <div style={{ display: 'flex', gap: '16px', marginBottom: '32px', flexWrap: 'wrap' }}>
-        <div style={{ flex: 1, minWidth: '300px', position: 'relative' }}>
+        <div style={{ flex: 1, minWidth: 0, position: 'relative' }}>
           <Search size={18} color="var(--text-muted)" style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)' }} />
           <input 
              style={{ width: '100%', padding: '14px 16px 14px 48px', fontSize: '15px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', color: 'var(--text)', outline: 'none', transition: 'box-shadow 0.2s ease' }}
@@ -96,7 +96,7 @@ export default function DiscoverPage() {
                  <span className="tag tag-ai">AI Evaluated</span>
                </div>
 
-               <div style={{ width: '100%', height: 350 }}>
+               <div className="chart-container">
                  <ResponsiveContainer width="100%" height="100%">
                    <ScatterChart margin={{ top: 20, right: 20, bottom: 0, left: -20 }}>
                      <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
@@ -119,7 +119,7 @@ export default function DiscoverPage() {
              <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Sorted by Engagement multiplier</span>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '24px' }}>
+          <div className="video-card-grid">
             {[...videos].sort((a, b) => b.engagementRate - a.engagementRate).map(v => (
               <a key={v.id} href={`https://youtube.com/watch?v=${v.id}`} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none", color: "inherit" }}>
                 <VideoCard video={v} />

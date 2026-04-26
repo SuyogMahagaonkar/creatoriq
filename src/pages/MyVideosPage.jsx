@@ -1,14 +1,17 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import {
   Video, ListVideo, Search, Eye, ThumbsUp, MessageSquare, Clock, Youtube,
   Sparkles, AlertTriangle, CheckCircle2, Edit3, Type, AlignLeft, Tags, X, Wand2, Save, Layers, ChevronLeft, BarChart2, ChevronRight, Grid, List as ListIcon, Filter, TrendingUp,
-  LayoutGrid, AlignJustify, ExternalLink, Activity
+  LayoutGrid, AlignJustify, ExternalLink, Activity, Lock
 } from "lucide-react";
 import { ExpandableText, ScoreCircle, SuggestionCard, Spinner } from "../components/Shared";
-import { analyzeTitle, analyzeDescription, analyzeTags, getScoreColor, getScoreLabel, formatCount, timeAgo } from "../utils";
+import { analyzeTitle, analyzeDescription, analyzeTags, getScoreColor, getScoreLabel, formatCount, timeAgo, calculateOverallSEO } from "../utils";
 import { fetchPlaylistVideos, fetchGeminiSuggestions, updateYouTubeMetadata } from "../api";
+import { CreatorContext } from '../context/CreatorContext';
 
 export default function MyVideosPage({ videos, playlists, setVideos, setPlaylists, accessToken, setPage, setEditingVideoId, setEditingPlaylistId, setPreviousPage }) {
+  const { geminiKey, setIsSettingsOpen, setSettingsTab } = useContext(CreatorContext);
+  const handleLockedAI = () => { setSettingsTab('ai'); setIsSettingsOpen(true); };
   const [tab, setTab] = useState("videos");
   const [query, setQuery] = useState("");
   const [layoutStyle, setLayoutStyle] = useState("list"); // 'list' or 'grid'
@@ -64,7 +67,7 @@ export default function MyVideosPage({ videos, playlists, setVideos, setPlaylist
   }, [cooldown, apiError]);
 
   const getSimulatedScore = (v) => {
-    return Math.round((analyzeTitle(v.title).score + analyzeDescription(v.description).score + analyzeTags(v.tags).score) / 3);
+    return calculateOverallSEO(analyzeTitle(v.title), analyzeDescription(v.description), analyzeTags(v.tags));
   };
 
   let processedVideos = [...videos];
@@ -93,7 +96,7 @@ export default function MyVideosPage({ videos, playlists, setVideos, setPlaylist
   const titleAnalysis = targetObj ? analyzeTitle(targetObj.title) : null;
   const descAnalysis = targetObj ? analyzeDescription(targetObj.description) : null;
   const tagAnalysis = targetObj ? analyzeTags(targetObj.tags) : null;
-  const overallSEO = targetObj ? Math.round((titleAnalysis.score + descAnalysis.score + tagAnalysis.score) / 3) : null;
+  const overallSEO = targetObj ? calculateOverallSEO(titleAnalysis, descAnalysis, tagAnalysis) : null;
 
   const actionPlan = targetObj ? [
     ...titleAnalysis.issues.map(issue => ({ field: "title", issue })),
@@ -171,7 +174,7 @@ export default function MyVideosPage({ videos, playlists, setVideos, setPlaylist
       
       {/* HEADER: STICKY MAC-STYLE TOOLBAR */}
       <div style={{ position: 'sticky', top: 0, zIndex: 40, background: 'var(--bg-transparent)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', borderBottom: '1px solid var(--border)', padding: '16px 0', marginBottom: 24, margin: '0 -24px', paddingLeft: 24, paddingRight: 24 }}>
-         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+         <div className="toolbar-row">
             <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
               <h1 style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.02em', margin: 0 }}>Asset Library</h1>
               
@@ -192,7 +195,7 @@ export default function MyVideosPage({ videos, playlists, setVideos, setPlaylist
               </div>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            <div className="toolbar-actions">
                {/* SEARCH */}
                <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--surface)', border: '1px solid var(--border)', padding: '6px 12px', borderRadius: 'var(--radius-md)', width: 260 }}>
                   <Search size={14} color="var(--text-muted)" />
@@ -220,7 +223,7 @@ export default function MyVideosPage({ videos, playlists, setVideos, setPlaylist
       </div>
 
       {/* MASTER-DETAIL SPLIT PANE */}
-      <div style={{ display: 'flex', gap: 24, flex: 1, alignItems: 'flex-start' }}>
+      <div className="split-pane">
 
          {/* LEFT PANE: MASTER LIBRARY */}
          <div style={{ flex: 1, minWidth: 0, transition: 'all 0.3s ease' }}>
@@ -253,31 +256,31 @@ export default function MyVideosPage({ videos, playlists, setVideos, setPlaylist
                  ) : (
                    /* HYPER-DENSE LIST VIEW */
                    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', overflow: 'hidden' }}>
-                      <div style={{ display: 'grid', gridTemplateColumns: '48px 3fr 1fr 1fr 1fr 60px', padding: '12px 16px', background: 'var(--surface-hover)', borderBottom: '1px solid var(--border)', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      <div className="data-table-header video-cols">
                          <div>Media</div>
                          <div>Title & Metadata</div>
-                         <div>Views</div>
-                         <div>Engagement</div>
-                         <div>Published</div>
-                         <div style={{ textAlign: 'right' }}>Health</div>
+                         <div className="mobile-hide">Views</div>
+                         <div className="mobile-hide">Engagement</div>
+                         <div className="mobile-hide">Published</div>
+                         <div className="mobile-hide" style={{ textAlign: 'right' }}>Health</div>
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column' }}>
                          {paginatedVideos.map((v, i) => {
                            const isSelected = selectedAsset?.id === v.id;
                            const score = getSimulatedScore(v);
                            return (
-                             <div key={v.id} onClick={() => setSelectedAsset(v)} style={{ display: 'grid', gridTemplateColumns: '48px 3fr 1fr 1fr 1fr 60px', padding: '12px 16px', alignItems: 'center', cursor: 'pointer', borderBottom: i < paginatedVideos.length - 1 ? '1px solid var(--border)' : 'none', background: isSelected ? 'var(--bg)' : 'transparent', transition: 'background 0.2s', outline: isSelected ? '1px solid var(--accent)' : 'none', zIndex: isSelected ? 10 : 1 }}>
+                             <div key={v.id} onClick={() => setSelectedAsset(v)} className="data-table-row video-cols" style={{ cursor: 'pointer', borderBottom: i < paginatedVideos.length - 1 ? '1px solid var(--border)' : 'none', background: isSelected ? 'var(--bg)' : 'transparent', transition: 'background 0.2s', outline: isSelected ? '1px solid var(--accent)' : 'none', zIndex: isSelected ? 10 : 1, padding: '12px 16px' }}>
                                <img src={v.thumbnail} alt="" style={{ width: 48, height: 27, objectFit: 'cover', borderRadius: 4, background: 'var(--surface-hover)' }} />
                                <div style={{ fontSize: 13, fontWeight: 500, color: isSelected ? 'var(--accent)' : 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', paddingRight: 16 }}>{v.title}</div>
-                               <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{formatCount(v.viewCount)}</div>
-                               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                               <div style={{ fontSize: 12, color: 'var(--text-muted)' }} className="mobile-hide">{formatCount(v.viewCount)}</div>
+                               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }} className="mobile-hide">
                                   <div style={{ width: 32, height: 4, background: 'var(--border)', borderRadius: 2, overflow: 'hidden' }}>
-                                     <div style={{ width: `${Math.min(100, (v.engagementRate/10)*100)}%`, height: '100%', background: v.engagementRate > 4 ? '#10b981' : v.engagementRate > 2 ? '#f59e0b' : '#ef4444' }} />
+                                     <div style={{ width: `${Math.min(100, (v.engagementRate/10)*100)}%`, height: '100%', background: v.engagementRate > 4 ? 'var(--success-text)' : v.engagementRate > 2 ? 'var(--warning-text)' : 'var(--error-text)' }} />
                                   </div>
                                   <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{v.engagementRate}%</span>
                                </div>
-                               <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{new Date(v.publishedAt).toLocaleDateString()}</div>
-                               <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
+                               <div style={{ fontSize: 12, color: 'var(--text-muted)' }} className="mobile-hide">{new Date(v.publishedAt).toLocaleDateString()}</div>
+                               <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }} className="mobile-hide">
                                   <div style={{ fontSize: 12, fontWeight: 600, color: getScoreColor(score), background: `${getScoreColor(score)}15`, padding: '2px 6px', borderRadius: 4 }}>{score}</div>
                                </div>
                              </div>
@@ -317,21 +320,21 @@ export default function MyVideosPage({ videos, playlists, setVideos, setPlaylist
                    </div>
                  ) : (
                    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', overflow: 'hidden' }}>
-                      <div style={{ display: 'grid', gridTemplateColumns: '48px 3fr 1fr 1fr', padding: '12px 16px', background: 'var(--surface-hover)', borderBottom: '1px solid var(--border)', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      <div className="data-table-header playlist-cols">
                          <div>Cover</div>
                          <div>Playlist Title & Info</div>
-                         <div>Video Count</div>
-                         <div>Last Updated</div>
+                         <div className="mobile-hide">Video Count</div>
+                         <div className="mobile-hide">Last Updated</div>
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column' }}>
                          {paginatedPlaylists.map((p, i) => {
                            const isSelected = selectedAsset?.id === p.id;
                            return (
-                             <div key={p.id} onClick={() => setSelectedAsset(p)} style={{ display: 'grid', gridTemplateColumns: '48px 3fr 1fr 1fr', padding: '12px 16px', alignItems: 'center', cursor: 'pointer', borderBottom: i < paginatedPlaylists.length - 1 ? '1px solid var(--border)' : 'none', background: isSelected ? 'var(--bg)' : 'transparent', outline: isSelected ? '1px solid var(--accent)' : 'none', zIndex: isSelected ? 10 : 1 }}>
+                             <div key={p.id} onClick={() => setSelectedAsset(p)} className="data-table-row playlist-cols" style={{ cursor: 'pointer', borderBottom: i < paginatedPlaylists.length - 1 ? '1px solid var(--border)' : 'none', background: isSelected ? 'var(--bg)' : 'transparent', outline: isSelected ? '1px solid var(--accent)' : 'none', zIndex: isSelected ? 10 : 1, padding: '12px 16px' }}>
                                <img src={p.thumbnail} alt="" style={{ width: 48, height: 27, objectFit: 'cover', borderRadius: 4, background: 'var(--surface-hover)' }} />
                                <div style={{ fontSize: 13, fontWeight: 500, color: isSelected ? 'var(--accent)' : 'var(--text)' }}>{p.title}</div>
-                               <div style={{ fontSize: 12, color: 'var(--text-muted)' }}><span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: 'var(--surface-hover)', padding: '2px 8px', borderRadius: 12 }}>{p.itemCount}</span></div>
-                               <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{timeAgo(p.publishedAt)}</div>
+                               <div style={{ fontSize: 12, color: 'var(--text-muted)' }} className="mobile-hide"><span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: 'var(--surface-hover)', padding: '2px 8px', borderRadius: 12 }}>{p.itemCount}</span></div>
+                               <div style={{ fontSize: 12, color: 'var(--text-muted)' }} className="mobile-hide">{timeAgo(p.publishedAt)}</div>
                              </div>
                            )
                          })}
@@ -352,7 +355,10 @@ export default function MyVideosPage({ videos, playlists, setVideos, setPlaylist
 
          {/* RIGHT PANE: CONTEXT PANEL SLIDE-IN */}
          {selectedAsset && (
-            <div className="fade-in" style={{ width: 420, flexShrink: 0, position: 'sticky', top: 100, height: 'calc(100vh - 120px)', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: 'var(--shadow-lg)' }}>
+            <>
+            {/* Mobile overlay for context panel */}
+            <div className="context-panel-overlay" style={{ display: 'none' }} onClick={() => setSelectedAsset(null)} />
+            <div className="context-panel fade-in">
                
                {/* Context Header */}
                <div style={{ padding: 16, borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', background: 'var(--surface-hover)' }}>
@@ -408,9 +414,9 @@ export default function MyVideosPage({ videos, playlists, setVideos, setPlaylist
                            </div>
                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                              {analysis.issues.length > 0 ? (
-                               <span style={{ fontSize: 11, fontWeight: 600, color: '#ef4444', background: 'rgba(239, 68, 68, 0.1)', padding: '2px 6px', borderRadius: 12 }}>{analysis.issues.length} Flag{analysis.issues.length > 1 && 's'}</span>
+                               <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--error-text)', background: 'var(--error-bg)', padding: '2px 6px', borderRadius: 12 }}>{analysis.issues.length} Flag{analysis.issues.length > 1 && 's'}</span>
                              ) : (
-                               <span style={{ fontSize: 11, fontWeight: 600, color: '#10b981', background: 'rgba(16, 185, 129, 0.1)', padding: '2px 6px', borderRadius: 12 }}>OK</span>
+                               <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--success-text)', background: 'var(--success-bg)', padding: '2px 6px', borderRadius: 12 }}>OK</span>
                              )}
                              <span style={{ fontSize: 13, fontWeight: 700, color: getScoreColor(analysis.score), width: 24, textAlign: 'right' }}>{analysis.score}</span>
                            </div>
@@ -454,6 +460,7 @@ export default function MyVideosPage({ videos, playlists, setVideos, setPlaylist
                   </button>
                </div>
             </div>
+            </>
          )}
       </div>
 
@@ -471,8 +478,8 @@ export default function MyVideosPage({ videos, playlists, setVideos, setPlaylist
                <div style={{ background: 'var(--bg)', border: '1px solid var(--accent)', padding: 16, borderRadius: 'var(--radius-md)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: 6 }}><Wand2 size={14} /> AI Context Engine</div>
-                     <button className="btn btn-ai btn-sm" onClick={handleGenerateAI} disabled={isGeneratingAI || cooldown > 0}>
-                       {isGeneratingAI ? <Spinner size={12} /> : cooldown > 0 ? `Wait ${cooldown}s` : "Generate Rewrite"}
+                     <button className="btn btn-ai btn-sm" onClick={geminiKey ? handleGenerateAI : handleLockedAI} disabled={(isGeneratingAI || cooldown > 0) && !!geminiKey}>
+                       {isGeneratingAI ? <Spinner size={12} /> : geminiKey ? (cooldown > 0 ? `Wait ${cooldown}s` : "Generate Rewrite") : <><Lock size={12} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} /> Unlock AI</>}
                      </button>
                   </div>
                   {aiSuggestions.length > 0 ? (
@@ -498,7 +505,7 @@ export default function MyVideosPage({ videos, playlists, setVideos, setPlaylist
                  )}
                </div>
 
-               {apiError && <div style={{ color: "#ef4444", fontSize: 12, display: 'flex', gap: 6, alignItems: 'center' }}><AlertTriangle size={14} /> {apiError}</div>}
+               {apiError && <div style={{ color: "var(--error-text)", fontSize: 12, display: 'flex', gap: 6, alignItems: 'center' }}><AlertTriangle size={14} /> {apiError}</div>}
             </div>
 
             <div style={{ padding: '16px 24px', display: "flex", justifyContent: "flex-end", gap: 12, borderTop: '1px solid var(--border)', background: 'var(--bg)' }}>

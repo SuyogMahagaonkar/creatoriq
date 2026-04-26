@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { MessageCircle, Wand2, Send, Clock, CheckCircle2, ThumbsUp, ThumbsDown, Heart, MessageSquare, Sparkles, RefreshCw, AlertTriangle, Inbox, Edit2, Trash2, Save, Flame, PlayCircle, ChevronDown, ChevronUp, Smile, Zap, Globe, ScanFace, LayoutList, Columns, Frown, Meh } from 'lucide-react';
+import React, { useState, useEffect, useContext } from 'react';
+import { MessageCircle, Wand2, Send, Clock, CheckCircle2, ThumbsUp, ThumbsDown, Heart, MessageSquare, Sparkles, RefreshCw, AlertTriangle, Inbox, Edit2, Trash2, Save, Flame, PlayCircle, ChevronDown, ChevronUp, Smile, Zap, Globe, ScanFace, LayoutList, Columns, Frown, Meh, Lock } from 'lucide-react';
 import { fetchRecentComments, draftCommentReply, postCommentReply, editComment, deleteComment, summarizeCommentsVibe, analyzeSentiments, translateCommentText } from '../api';
+import { CreatorContext } from '../context/CreatorContext';
 import { Spinner } from '../components/Shared';
 import EmojiPicker from 'emoji-picker-react';
 
@@ -27,12 +28,15 @@ const formatYouTubeText = (text) => {
   const parts = text.split(/(@[^\s]+)/g);
   return parts.map((part, index) => 
     part.startsWith('@') 
-      ? <span key={index} style={{ color: '#3EA6FF', cursor: 'pointer' }}>{part}</span> 
+      ? <span key={index} style={{ color: '#5ea8d4', cursor: 'pointer' }}>{part}</span> 
       : part
   );
 };
 
 export default function CommentsPage({ setIsSessionExpired }) {
+  const { geminiKey, setIsSettingsOpen, setSettingsTab } = useContext(CreatorContext);
+  const handleLockedAI = () => { setSettingsTab('ai'); setIsSettingsOpen(true); };
+
   // Core States
   const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -282,10 +286,10 @@ export default function CommentsPage({ setIsSessionExpired }) {
         border: isDraftingHere ? '1px solid var(--accent)' : '1px solid var(--border)',
         opacity: isSuccess && viewMode === 'list' && activeTab === "needs" ? 0.6 : 1, transition: 'all 0.4s ease' 
       }}>
-        <div style={{ display: 'flex', gap: 16 }}>
+        <div className="comment-card-layout">
           
           {/* LEFT COLUMN: Avatar & Vertical Line */}
-          <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', width: 44, flexShrink: 0 }}>
+          <div className="comment-avatar-col">
             <img src={c.authorAvatar} alt="author" style={{ width: 44, height: 44, borderRadius: '50%', position: 'relative', zIndex: 2 }} />
             {(hasReplies || isDraftingHere) && (
               <div style={{ position: 'absolute', top: 44, bottom: 0, width: 2, background: 'var(--border-strong)', opacity: 0.4, zIndex: 1 }}></div>
@@ -314,13 +318,13 @@ export default function CommentsPage({ setIsSessionExpired }) {
                     {translatingId === c.commentId ? <Spinner size={12} /> : <><Globe size={12} /> Translate</>}
                   </button>
                 )}
-                {isHot && <span style={{ color: '#D95C00', fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4 }}><Flame size={10} fill="#D95C00" /> Hot</span>}
+                {isHot && <span style={{ color: '#d47a3c', fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4 }}><Flame size={10} fill="#d47a3c" /> Hot</span>}
               </div>
 
               {c.isCreatorComment && !isEditingTop && (
                 <div style={{ display: 'flex', gap: 4 }}>
                   <button onClick={() => startEditing(c.commentId, c.text)} disabled={processingAction} className="btn btn-secondary btn-sm" style={{ padding: 6, border: 'none', background: 'transparent' }}><Edit2 size={14}/></button>
-                  <button onClick={() => handleDelete(c.commentId)} disabled={processingAction} className="btn btn-secondary btn-sm" style={{ padding: 6, border: 'none', background: 'transparent', color: '#CC1016' }}><Trash2 size={14}/></button>
+                  <button onClick={() => handleDelete(c.commentId)} disabled={processingAction} className="btn btn-secondary btn-sm" style={{ padding: 6, border: 'none', background: 'transparent', color: 'var(--error-text)' }}><Trash2 size={14}/></button>
                 </div>
               )}
             </div>
@@ -360,7 +364,7 @@ export default function CommentsPage({ setIsSessionExpired }) {
                 <img src={c.replies[c.replies.length - 1]?.authorAvatar || c.replies[0]?.authorAvatar} alt="reply" style={{ width: 24, height: 24, borderRadius: '50%', position: 'relative', zIndex: 2 }} />
                 <button 
                   onClick={() => setExpandedReplies(prev => new Set(prev).add(c.commentId))}
-                  style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', color: '#3EA6FF', fontSize: 13, fontWeight: 700, cursor: 'pointer', padding: '6px 12px', borderRadius: 16, position: 'relative', zIndex: 2, transition: 'background 0.2s' }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', color: '#5ea8d4', fontSize: 13, fontWeight: 700, cursor: 'pointer', padding: '6px 12px', borderRadius: 16, position: 'relative', zIndex: 2, transition: 'background 0.2s' }}
                   onMouseOver={e => e.currentTarget.style.background = 'rgba(62, 166, 255, 0.1)'}
                   onMouseOut={e => e.currentTarget.style.background = 'transparent'}
                 >
@@ -393,7 +397,7 @@ export default function CommentsPage({ setIsSessionExpired }) {
                           {reply.isCreator && !isEditingReply && (
                             <div style={{ display: 'flex', gap: 4 }}>
                               <button onClick={() => startEditing(reply.commentId, reply.text)} disabled={processingAction} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><Edit2 size={12}/></button>
-                              <button onClick={() => handleDelete(reply.commentId)} disabled={processingAction} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#CC1016' }}><Trash2 size={12}/></button>
+                              <button onClick={() => handleDelete(reply.commentId)} disabled={processingAction} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--error-text)' }}><Trash2 size={12}/></button>
                             </div>
                           )}
                         </div>
@@ -437,7 +441,7 @@ export default function CommentsPage({ setIsSessionExpired }) {
                 <div style={{ width: 24 }}></div> 
                 <button 
                   onClick={() => setExpandedReplies(prev => { const next = new Set(prev); next.delete(c.commentId); return next; })}
-                  style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: -8, background: 'none', border: 'none', color: '#3EA6FF', fontSize: 13, fontWeight: 700, cursor: 'pointer', padding: '6px 12px', borderRadius: 16, position: 'relative', zIndex: 2, transition: 'background 0.2s' }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: -8, background: 'none', border: 'none', color: '#5ea8d4', fontSize: 13, fontWeight: 700, cursor: 'pointer', padding: '6px 12px', borderRadius: 16, position: 'relative', zIndex: 2, transition: 'background 0.2s' }}
                   onMouseOver={e => e.currentTarget.style.background = 'rgba(62, 166, 255, 0.1)'}
                   onMouseOut={e => e.currentTarget.style.background = 'transparent'}
                 >
@@ -471,8 +475,8 @@ export default function CommentsPage({ setIsSessionExpired }) {
                       <button onClick={() => setShowEmojiPicker(prev => !prev)} title="Add Emoji" style={{ position: 'absolute', bottom: 16, right: 78, background: 'none', border: 'none', color: showEmojiPicker ? 'var(--accent)' : 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', transition: '0.2s' }}>
                         <Smile size={20} />
                       </button>
-                      <button onClick={() => generateAiReply(c)} disabled={drafting} title="Write with AI" style={{ position: 'absolute', bottom: 12, right: 12, background: 'linear-gradient(135deg, var(--accent), #6b21a8)', color: '#fff', border: 'none', borderRadius: '8px', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 12, fontWeight: 700, boxShadow: '0 2px 8px rgba(10, 102, 194, 0.2)' }}>
-                        <Sparkles size={14} /> AI
+                      <button onClick={geminiKey ? () => generateAiReply(c) : handleLockedAI} disabled={drafting && !!geminiKey} title="Write with AI" style={{ position: 'absolute', bottom: 12, right: 12, background: 'var(--ai-gradient)', color: '#fff', border: 'none', borderRadius: '8px', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 12, fontWeight: 700, boxShadow: 'var(--shadow-ai)' }}>
+                        <Sparkles size={14} /> {geminiKey ? "AI" : <Lock size={12} />}
                       </button>
                     </div>
 
@@ -511,7 +515,7 @@ export default function CommentsPage({ setIsSessionExpired }) {
       {error && <div className="error-box mb-24"><Flame size={18} /> {error}</div>}
 
       {/* DASHBOARD GRID (Responsive Auto-Fit Grid) */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 16, marginBottom: 32 }}>
+      <div className="widget-grid" style={{ marginBottom: 32 }}>
         
         {/* WIDGET 1: AI VIBE SUMMARY */}
         <div style={{ background: 'var(--card)', padding: 20, borderRadius: 16, border: '1px solid var(--border)', display: 'flex', flexDirection: 'column' }}>
@@ -520,8 +524,8 @@ export default function CommentsPage({ setIsSessionExpired }) {
               <div style={{ background: 'var(--surface-2)', padding: 6, borderRadius: 8 }}><Zap size={16} color="var(--accent)" /></div>
               AI Vibe Summary
             </div>
-            <button onClick={handleSummarizeVibe} disabled={isSummarizing || comments.length === 0} className="btn btn-secondary btn-sm" style={{ borderRadius: 16 }}>
-              {isSummarizing ? <Spinner size={14} /> : "Generate"}
+            <button onClick={geminiKey ? handleSummarizeVibe : handleLockedAI} disabled={(isSummarizing || comments.length === 0) && !!geminiKey} className="btn btn-secondary btn-sm" style={{ borderRadius: 16 }}>
+              {isSummarizing ? <Spinner size={14} /> : geminiKey ? "Generate" : <><Lock size={12} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} /> Unlock AI</>}
             </button>
           </div>
           {summary ? (
@@ -548,8 +552,8 @@ export default function CommentsPage({ setIsSessionExpired }) {
               <div style={{ background: 'var(--surface-2)', padding: 6, borderRadius: 8 }}><ScanFace size={16} color="var(--success-text)" /></div>
               Pipeline & Sentiment
             </div>
-            <button onClick={handleScanSentiments} disabled={isScanningVibes} className="btn btn-secondary btn-sm" style={{ borderRadius: 16 }}>
-              {isScanningVibes ? <Spinner size={14} /> : "Scan Sentiments"}
+            <button onClick={geminiKey ? handleScanSentiments : handleLockedAI} disabled={isScanningVibes && !!geminiKey} className="btn btn-secondary btn-sm" style={{ borderRadius: 16 }}>
+              {isScanningVibes ? <Spinner size={14} /> : geminiKey ? "Scan Sentiments" : <><Lock size={12} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} /> Unlock AI</>}
             </button>
           </div>
           
@@ -568,7 +572,7 @@ export default function CommentsPage({ setIsSessionExpired }) {
       </div>
 
       {/* CONTROLS BAR: Views & Filters */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: 16, marginBottom: 24, flexWrap: 'wrap', gap: 16 }}>
+      <div className="controls-bar" style={{ borderBottom: '1px solid var(--border)', paddingBottom: 16, marginBottom: 24 }}>
         
         {/* VIEW TOGGLE (List vs Kanban) */}
         <div style={{ display: 'flex', background: 'var(--surface)', padding: 4, borderRadius: 12, border: '1px solid var(--border)' }}>
@@ -642,10 +646,10 @@ export default function CommentsPage({ setIsSessionExpired }) {
           </div>
         ) : (
           /* KANBAN BOARD VIEW */
-          <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start', overflowX: 'auto', paddingBottom: 24 }}>
+          <div className="kanban-board">
             
             {/* COLUMN 1: INBOX */}
-            <div style={{ flex: '1 1 400px', minWidth: 350, background: 'var(--surface-2)', padding: 16, borderRadius: 20, border: '1px solid var(--border)' }}>
+            <div className="kanban-column" style={{ background: 'var(--surface-2)', padding: 16, borderRadius: 20, border: '1px solid var(--border)' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, padding: '0 8px' }}>
                 <h3 style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 8 }}><Inbox size={18} color="var(--accent)" /> Inbox</h3>
                 <span style={{ background: 'var(--card)', padding: '2px 10px', borderRadius: 12, fontSize: 12, fontWeight: 700 }}>{needsEngagement.length}</span>
@@ -660,7 +664,7 @@ export default function CommentsPage({ setIsSessionExpired }) {
             </div>
 
             {/* COLUMN 2: RESPONDED */}
-            <div style={{ flex: '1 1 400px', minWidth: 350, background: 'var(--surface-2)', padding: 16, borderRadius: 20, border: '1px solid var(--border)' }}>
+            <div className="kanban-column" style={{ background: 'var(--surface-2)', padding: 16, borderRadius: 20, border: '1px solid var(--border)' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, padding: '0 8px' }}>
                 <h3 style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 8 }}><CheckCircle2 size={18} color="var(--success-text)" /> Responded</h3>
                 <span style={{ background: 'var(--card)', padding: '2px 10px', borderRadius: 12, fontSize: 12, fontWeight: 700 }}>{alreadyCommented.length}</span>

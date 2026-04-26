@@ -149,7 +149,7 @@ export default function EditPlaylistPage({ playlistId, setPage, channelVideos, p
       </div>
 
       {error && <div className="error-box mb-24"><AlertTriangle size={18} /> {error}</div>}
-      {success && <div style={{ background: "#EAF4EA", color: "#057642", padding: 16, borderRadius: 8, fontSize: 14, marginBottom: 24, display: 'flex', alignItems: 'center', gap: 8 }}><CheckCircle2 size={18} /> {success}</div>}
+      {success && <div style={{ background: "var(--success-bg)", color: "var(--success-text)", padding: 16, borderRadius: 8, fontSize: 14, marginBottom: 24, display: 'flex', alignItems: 'center', gap: 8 }}><CheckCircle2 size={18} /> {success}</div>}
 
       {loading && <div style={{ padding: '80px 0', display: 'flex', justifyContent: 'center' }}><Spinner size={40} /></div>}
 

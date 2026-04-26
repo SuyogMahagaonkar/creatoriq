@@ -1,9 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { UploadCloud, FileVideo, Layers, Wand2, CheckCircle2, AlertTriangle, Globe, Lock, Link, Play, X } from 'lucide-react';
 import { generateFreshSEO, uploadVideoToYouTube, fetchPlaylists, addVideoToPlaylist } from '../api';
 import { Spinner } from '../components/Shared';
+import { CreatorContext } from '../context/CreatorContext';
 
 export default function BulkUploadPage() {
+  const { geminiKey, setIsSettingsOpen, setSettingsTab } = useContext(CreatorContext);
+  const handleLockedAI = () => { setSettingsTab('ai'); setIsSettingsOpen(true); };
   const [topic, setTopic] = useState("");
   const [videos, setVideos] = useState([]);
   
@@ -148,9 +151,9 @@ export default function BulkUploadPage() {
         <p style={{ fontSize: 14, color: 'var(--text-muted)' }}>Automate your workflow. Process and upload multiple videos simultaneously with AI-powered SEO.</p>
       </div>
 
-      {globalError && <div style={{ padding: 16, background: 'rgba(239, 68, 68, 0.05)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: 'var(--radius-md)', marginBottom: 24, display: 'flex', alignItems: 'center', gap: 8 }}><AlertTriangle size={16} /> {globalError}</div>}
+      {globalError && <div style={{ padding: 16, background: 'var(--error-bg)', color: 'var(--error-text)', border: '1px solid var(--error-border)', borderRadius: 'var(--radius-md)', marginBottom: 24, display: 'flex', alignItems: 'center', gap: 8 }}><AlertTriangle size={16} /> {globalError}</div>}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(400px, 1fr) minmax(300px, 350px)', gap: 40 }}>
+      <div className="page-grid-2col">
         
         {/* LEFT PANE */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
@@ -185,16 +188,16 @@ export default function BulkUploadPage() {
              ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                    {videos.map((vid, idx) => (
-                      <div key={vid.id} style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', padding: 20, borderLeft: `6px solid ${vid.status === 'DONE' ? '#10b981' : vid.status === 'ERROR' ? '#ef4444' : 'var(--accent)'}` }}>
+                      <div key={vid.id} style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', padding: 20, borderLeft: `6px solid ${vid.status === 'DONE' ? 'var(--success-text)' : vid.status === 'ERROR' ? 'var(--error-text)' : 'var(--accent)'}` }}>
                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: (vid.title || vid.description) ? 16 : 0 }}>
                             <div style={{ fontWeight: 600, fontSize: 15, color: 'var(--text)', wordBreak: 'break-word', paddingRight: 16 }}>{idx + 1}. {vid.file.name}</div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
                                {vid.status === 'IDLE' && <span style={{ fontSize: 12, fontWeight: 600, background: 'var(--surface-hover)', padding: '4px 8px', borderRadius: 'var(--radius-sm)' }}>Pending AI</span>}
                                {vid.status === 'GENERATING' && <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: 6 }}><Spinner size={12}/> Generating SEO</span>}
-                               {vid.status === 'GENERATED' && <span style={{ fontSize: 12, fontWeight: 600, color: '#10b981', display: 'flex', alignItems: 'center', gap: 6 }}><CheckCircle2 size={14}/> Ready</span>}
+                               {vid.status === 'GENERATED' && <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--success-text)', display: 'flex', alignItems: 'center', gap: 6 }}><CheckCircle2 size={14}/> Ready</span>}
                                {vid.status === 'UPLOADING' && <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 6 }}><Spinner size={12}/> Uploading...</span>}
-                               {vid.status === 'DONE' && <span style={{ fontSize: 12, fontWeight: 600, background: '#10b981', color: '#fff', padding: '4px 8px', borderRadius: 'var(--radius-sm)' }}>Published</span>}
-                               {vid.status === 'ERROR' && <span style={{ fontSize: 12, fontWeight: 600, color: '#ef4444', display: 'flex', alignItems: 'center', gap: 4 }} title={vid.errorMsg}><AlertTriangle size={14}/> Error</span>}
+                               {vid.status === 'DONE' && <span style={{ fontSize: 12, fontWeight: 600, background: 'var(--success-text)', color: '#fff', padding: '4px 8px', borderRadius: 'var(--radius-sm)' }}>Published</span>}
+                               {vid.status === 'ERROR' && <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--error-text)', display: 'flex', alignItems: 'center', gap: 4 }} title={vid.errorMsg}><AlertTriangle size={14}/> Error</span>}
                                
                                {['IDLE', 'ERROR', 'GENERATED'].includes(vid.status) && !isProcessing && (
                                   <button onClick={() => removeVideo(vid.id)} style={{ color: 'var(--text-light)', background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}><X size={16} /></button>
@@ -209,7 +212,7 @@ export default function BulkUploadPage() {
                          )}
                          {vid.successId && (
                             <div style={{ marginTop: 12, fontSize: 13, textAlign: 'right' }}>
-                               <a href={`https://studio.youtube.com/video/${vid.successId}/edit`} target="_blank" rel="noopener noreferrer" style={{ color: "#10b981", fontWeight: 600, textDecoration: 'underline' }}>View in YouTube Studio &rarr;</a>
+                               <a href={`https://studio.youtube.com/video/${vid.successId}/edit`} target="_blank" rel="noopener noreferrer" style={{ color: "var(--success-text)", fontWeight: 600, textDecoration: 'underline' }}>View in YouTube Studio &rarr;</a>
                             </div>
                          )}
                       </div>
@@ -247,8 +250,8 @@ export default function BulkUploadPage() {
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <button className="btn btn-secondary" style={{ width: '100%', padding: 16, fontSize: 14, display: 'flex', justifyContent: 'center', gap: 8 }} onClick={handleGenerateAll} disabled={isProcessing || videos.length === 0}>
-              <Wand2 size={18} className="text-accent" /> Auto-Write SEO (Batch)
+            <button className="btn btn-secondary" style={{ width: '100%', padding: 16, fontSize: 14, display: 'flex', justifyContent: 'center', gap: 8, ...(geminiKey ? {} : { color: 'var(--text-muted)' }) }} onClick={geminiKey ? handleGenerateAll : handleLockedAI} disabled={(isProcessing || videos.length === 0) && !!geminiKey}>
+              {geminiKey ? <><Wand2 size={18} className="text-accent" /> Auto-Write SEO (Batch)</> : <><Lock size={18} className="text-muted" /> Unlock AI SEO</>}
             </button>
 
             <button className="btn btn-primary" style={{ width: '100%', padding: 16, fontSize: 16, display: 'flex', justifyContent: 'center', gap: 8 }} onClick={handlePublishAll} disabled={isProcessing || !videos.some(v => v.status === 'GENERATED')}>

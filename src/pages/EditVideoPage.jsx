@@ -1,10 +1,14 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Edit3, Save, Video, Image as ImageIcon, Subtitles, List, AlertTriangle, CheckCircle2, Globe, Hash, ArrowLeft, ImagePlus, Sparkles, Wand2, X, PlayCircle, BarChart2, Search, ChevronLeft, ChevronRight, Eye, ThumbsUp, MessageSquare, Info } from 'lucide-react';
+import React, { useState, useEffect, useRef, useContext } from 'react';
+import { Edit3, Save, Video, Image as ImageIcon, Subtitles, List, AlertTriangle, CheckCircle2, Globe, Hash, ArrowLeft, ImagePlus, Sparkles, Wand2, X, PlayCircle, BarChart2, Search, ChevronLeft, ChevronRight, Eye, ThumbsUp, MessageSquare, Info, Lock } from 'lucide-react';
 import { fetchSingleVideo, updateVideoMetadata, uploadCustomThumbnail, uploadCaptionTrack, fetchPlaylists, addVideoToPlaylist, generateAIThumbnail, analyzeThumbnailWithAI, checkVideoInPlaylist, removeVideoFromPlaylist, generateFreshSEO } from '../api';
+import { CreatorContext } from '../context/CreatorContext';
 import { Spinner, ScoreCircle } from '../components/Shared';
 import { getScoreColor } from '../utils';
 
 export default function EditVideoPage({ videoId, setPage }) {
+  const { geminiKey, setIsSettingsOpen, setSettingsTab } = useContext(CreatorContext);
+  const handleLockedAI = () => { setSettingsTab('ai'); setIsSettingsOpen(true); };
+
   const [rawVideo, setRawVideo] = useState(null);
 
   const [title, setTitle] = useState("");
@@ -408,7 +412,7 @@ export default function EditVideoPage({ videoId, setPage }) {
         <ArrowLeft size={16} /> Content Library
       </button>
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid var(--border)', paddingBottom: 24, marginBottom: 32 }}>
+      <div className="header-split" style={{ borderBottom: '1px solid var(--border)', paddingBottom: 24, marginBottom: 32 }}>
         <div>
           <h1 style={{ fontSize: 32, fontWeight: 600, letterSpacing: '-0.02em', marginBottom: 8, color: 'var(--text)' }}>Editor Studio</h1>
           <p style={{ fontSize: 14, color: 'var(--text-muted)' }}>Precision metadata and asset control.</p>
@@ -440,7 +444,7 @@ export default function EditVideoPage({ videoId, setPage }) {
       {loading && <div style={{ padding: '80px 0', display: 'flex', justifyContent: 'center' }}><Spinner size={32} /></div>}
 
       {rawVideo && !loading && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(400px, 1fr) minmax(300px, 350px)', gap: 40 }}>
+        <div className="page-grid-2col">
 
           {/* LEFT: Metadata & Thumbnails */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 40 }}>
@@ -455,8 +459,8 @@ export default function EditVideoPage({ videoId, setPage }) {
               <div style={{ background: 'var(--surface-hover)', padding: 16, borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', marginBottom: 8 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                    <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Search size={14} /> Target Keyword</label>
-                   <button className="btn btn-secondary btn-sm" onClick={handleOptimizeKeywords} disabled={isGeneratingKeywords} style={{ padding: '4px 12px', fontSize: 11, border: 'none', background: 'var(--surface)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                     {isGeneratingKeywords ? <Spinner size={12} /> : <><Wand2 size={12} /> Suggest Ideas</>}
+                   <button className="btn btn-secondary btn-sm" onClick={geminiKey ? handleOptimizeKeywords : handleLockedAI} disabled={isGeneratingKeywords && !!geminiKey} style={{ padding: '4px 12px', fontSize: 11, border: 'none', background: 'var(--surface)', display: 'flex', alignItems: 'center', gap: 4, ...(geminiKey ? {} : { color: 'var(--text-muted)' }) }}>
+                     {isGeneratingKeywords ? <Spinner size={12} /> : geminiKey ? <><Wand2 size={12} /> Suggest Ideas</> : <><Lock size={12} /> Unlock AI</>}
                    </button>
                 </div>
                 <input className="form-input" value={targetKeyword} onChange={e => setTargetKeyword(e.target.value)} placeholder="e.g. 'iPhone 15 Review', 'How to bake a cake'" style={{ fontSize: 14, background: 'var(--bg)' }} />
@@ -473,8 +477,8 @@ export default function EditVideoPage({ videoId, setPage }) {
               <div className="form-group">
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                    <label className="form-label">Title</label>
-                   <button className="btn btn-secondary btn-sm" onClick={handleOptimizeTitle} disabled={isGeneratingTitle} style={{ padding: '4px 12px', fontSize: 11, border: 'none', background: 'var(--surface-hover)' }}>
-                     {isGeneratingTitle ? <Spinner size={12} /> : "Auto-Optimize"}
+                   <button className="btn btn-secondary btn-sm" onClick={geminiKey ? handleOptimizeTitle : handleLockedAI} disabled={isGeneratingTitle && !!geminiKey} style={{ padding: '4px 12px', fontSize: 11, border: 'none', background: 'var(--surface-hover)', ...(geminiKey ? {} : { color: 'var(--text-muted)' }) }}>
+                     {isGeneratingTitle ? <Spinner size={12} /> : geminiKey ? "Auto-Optimize" : <><Lock size={12} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} /> Unlock AI</>}
                    </button>
                 </div>
                 <input className="form-input" value={title} onChange={e => setTitle(e.target.value)} style={{ fontSize: 16, fontWeight: 500 }} />
@@ -484,18 +488,18 @@ export default function EditVideoPage({ videoId, setPage }) {
                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                    <label className="form-label">Description</label>
                    <div style={{ display: 'flex', gap: 8 }}>
-                     <button className="btn btn-secondary btn-sm" onClick={handleGenerateChapters} disabled={isGeneratingChapters} title="Auto-Chapters" style={{ padding: '4px 12px', fontSize: 11, border: 'none', background: 'var(--surface-hover)' }}>
-                       {isGeneratingChapters ? <Spinner size={12} /> : <><List size={12} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} /> Chapters</>}
+                     <button className="btn btn-secondary btn-sm" onClick={geminiKey ? handleGenerateChapters : handleLockedAI} disabled={isGeneratingChapters && !!geminiKey} title="Auto-Chapters" style={{ padding: '4px 12px', fontSize: 11, border: 'none', background: 'var(--surface-hover)', ...(geminiKey ? {} : { color: 'var(--text-muted)' }) }}>
+                       {isGeneratingChapters ? <Spinner size={12} /> : geminiKey ? <><List size={12} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} /> Chapters</> : <><Lock size={12} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} /> Unlock AI</>}
                      </button>
-                     <button className="btn btn-secondary btn-sm" onClick={handleOptimizeDesc} disabled={isGeneratingDesc} style={{ padding: '4px 12px', fontSize: 11, border: 'none', background: 'var(--surface-hover)' }}>
-                       {isGeneratingDesc ? <Spinner size={12} /> : "Auto-Generate"}
+                     <button className="btn btn-secondary btn-sm" onClick={geminiKey ? handleOptimizeDesc : handleLockedAI} disabled={isGeneratingDesc && !!geminiKey} style={{ padding: '4px 12px', fontSize: 11, border: 'none', background: 'var(--surface-hover)', ...(geminiKey ? {} : { color: 'var(--text-muted)' }) }}>
+                       {isGeneratingDesc ? <Spinner size={12} /> : geminiKey ? "Auto-Generate" : <><Lock size={12} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} /> Unlock AI</>}
                      </button>
                    </div>
                  </div>
                 <textarea className="form-input" rows={8} value={description} onChange={e => setDescription(e.target.value)} style={{ fontSize: 14, fontFamily: 'var(--font-mono)' }} />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+              <div className="form-row-2col">
                  <div className="form-group">
                    <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Hash size={14} /> Global Hashtags</label>
                    <input className="form-input" value={hashtags} onChange={e => setHashtags(e.target.value)} placeholder="#Tech #Review" />
@@ -504,7 +508,9 @@ export default function EditVideoPage({ videoId, setPage }) {
                  <div className="form-group">
                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                      <label className="form-label">Search Tags</label>
-                     <span style={{ fontSize: 11, color: 'var(--text-muted)', cursor: 'pointer' }} onClick={handleOptimizeTags}>Auto Extract</span>
+                     <span style={{ fontSize: 11, color: geminiKey ? 'var(--text-muted)' : 'var(--text-light)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }} onClick={geminiKey ? handleOptimizeTags : handleLockedAI}>
+                       {geminiKey ? "Auto Extract" : <><Lock size={10} /> Unlock AI</>}
+                     </span>
                    </div>
                    <input className="form-input" value={tags} onChange={e => setTags(e.target.value)} placeholder="Comma separated..." />
                  </div>
@@ -520,7 +526,7 @@ export default function EditVideoPage({ videoId, setPage }) {
                 </button>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
+              <div className="thumb-grid-3">
                 {thumbs.map((thumb, idx) => (
                   <div key={idx} onClick={() => setActiveThumbIdx(idx)} style={{ cursor: 'pointer' }}>
                     <div style={{ width: '100%', aspectRatio: '16/9', border: activeThumbIdx === idx ? '2px solid var(--accent)' : '2px solid transparent', borderRadius: 'var(--radius-md)', overflow: 'hidden', background: 'var(--surface)', position: 'relative', outline: '1px solid var(--border)' }}>
@@ -554,9 +560,9 @@ export default function EditVideoPage({ videoId, setPage }) {
                         <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleThumbUpload} />
                       </label>
                       <div style={{ flex: 1, display: 'flex', alignItems: 'center', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', padding: 4 }}>
-                         <input className="form-input" placeholder="Or enter AI prompt..." value={thumbs[activeThumbIdx].prompt} onChange={(e) => updateThumb(activeThumbIdx, { prompt: e.target.value })} style={{ border: 'none', height: '100%', background: 'transparent' }} />
-                         <button className="btn btn-ai btn-sm" onClick={handleGenerateThumbAI} disabled={thumbs[activeThumbIdx].generating || !thumbs[activeThumbIdx].prompt} style={{ borderRadius: 'var(--radius-sm)' }}>
-                           {thumbs[activeThumbIdx].generating ? <Spinner size={14} /> : "Generate"}
+                         <input className="form-input" placeholder="Or enter AI prompt..." value={thumbs[activeThumbIdx].prompt} onChange={(e) => updateThumb(activeThumbIdx, { prompt: e.target.value })} style={{ border: 'none', height: '100%', background: 'transparent' }} disabled={!geminiKey} />
+                         <button className="btn btn-ai btn-sm" onClick={geminiKey ? handleGenerateThumbAI : handleLockedAI} disabled={(thumbs[activeThumbIdx].generating || !thumbs[activeThumbIdx].prompt) && !!geminiKey} style={{ borderRadius: 'var(--radius-sm)' }}>
+                           {thumbs[activeThumbIdx].generating ? <Spinner size={14} /> : geminiKey ? "Generate" : <><Lock size={12} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} /> Unlock AI</>}
                          </button>
                       </div>
                     </div>

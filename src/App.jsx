@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext } from "react";
 import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
 import { GoogleOAuthProvider } from '@react-oauth/google';
-import { BarChart2, Video, FileSearch, Globe, CheckCircle2, LogOut, Settings, X, Youtube, Key, Trash2, ShieldAlert, Save, UploadCloud, Layers, Menu, Moon, Sun, Monitor, MessageCircle, Edit3 } from "lucide-react";
+import { BarChart2, Video, FileSearch, Globe, CheckCircle2, LogOut, Settings, X, Youtube, Key, Trash2, ShieldAlert, Save, UploadCloud, Layers, Menu, Moon, Sun, Monitor, MessageCircle, Edit3, HelpCircle } from "lucide-react";
 import UploadPage from "./pages/UploadPage"; 
 import { GOOGLE_CLIENT_ID } from "./config";
 import { Spinner, ErrorBox } from "./components/Shared";
@@ -17,6 +17,7 @@ import EditVideoPage from "./pages/EditVideoPage";
 import EditPlaylistPage from "./pages/EditPlaylistPage";
 import PlaylistsPage from "./pages/PlaylistsPage";
 import BulkUploadPage from "./pages/BulkUploadPage";
+import Walkthrough from "./components/Walkthrough";
 
 const NAV = [
   { path: "/", id: "dashboard", label: "Overview", icon: BarChart2 },
@@ -60,12 +61,13 @@ function MainApp() {
     newGeminiKey, setNewGeminiKey,
     isValidatingKey, setIsValidatingKey,
     keyError, setKeyError,
-    handleSaveGeminiKey, handleRemoveGeminiKey
+    handleSaveGeminiKey, handleRemoveGeminiKey,
+    isSettingsOpen, setIsSettingsOpen,
+    settingsTab, setSettingsTab
   } = useContext(CreatorContext);
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const accessToken = localStorage.getItem("creator_iq_token");
-  const [showSettings, setShowSettings] = useState(false);
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -88,19 +90,17 @@ function MainApp() {
   };
 
   const [defaultSocialLinks, setDefaultSocialLinks] = useState(localStorage.getItem("creator_iq_social_links") || "");
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [settingsTab, setSettingsTab] = useState("youtube");
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', isDarkMode ? 'dark' : 'light');
   }, [isDarkMode]);
 
   useEffect(() => {
-    if (showSettings) {
+    if (isSettingsOpen) {
       setGeminiKey(localStorage.getItem("creator_iq_gemini_key") || import.meta.env.VITE_GEMINI_API_KEY || "");
       setDefaultSocialLinks(localStorage.getItem("creator_iq_social_links") || "");
     }
-  }, [showSettings]);
+  }, [isSettingsOpen]);
 
   if (!isOnboarded) {
     return <Onboarding onComplete={() => {
@@ -119,7 +119,7 @@ function MainApp() {
       />
       
       {/* SIDEBAR: Sleek, minimalistic rail */}
-      <nav className={`sidebar ${isMobileMenuOpen ? "open" : ""}`}>
+      <nav className={`sidebar ${isMobileMenuOpen ? "open" : ""} tour-sidebar`}>
         <div className="sidebar-logo">
           <div className="logo-mark">
             <div style={{ padding: 6, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 6, color: "var(--text)" }}>
@@ -155,7 +155,7 @@ function MainApp() {
           <div style={{ display: 'flex', gap: '4px' }}>
             <button
               onClick={() => setIsSettingsOpen(true)}
-              className="btn btn-secondary"
+              className="btn btn-secondary tour-settings-btn"
               style={{ flex: 1, padding: '8px', fontSize: '12px', display: 'flex', justifyContent: 'center' }}
             >
               <Settings size={14} />
@@ -172,7 +172,7 @@ function MainApp() {
       </nav>
 
       {/* MAIN CONTENT CANVAS */}
-      <main className="main-content">
+      <main className="main-content tour-main-content">
         <div className="topbar">
           <div className="topbar-title">
             <button className="mobile-menu-btn" onClick={() => setIsMobileMenuOpen(true)}>
@@ -182,8 +182,8 @@ function MainApp() {
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
              {!loading && !error && (
-               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 600, color: 'var(--text-light)' }}>
-                 <span style={{ width: 6, height: 6, background: '#10b981', borderRadius: '50%' }} /> Sync Active
+               <div className="tour-topbar-sync" style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 600, color: 'var(--text-light)' }}>
+                 <span style={{ width: 6, height: 6, background: 'var(--success-text)', borderRadius: '50%' }} /> Sync Active
                </div>
              )}
           </div>
@@ -216,10 +216,10 @@ function MainApp() {
       {isSettingsOpen && (
         <div className="modal-overlay" onClick={() => setIsSettingsOpen(false)}>
           <div className="modal-content fade-in" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 800, padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', height: '600px' }}>
-            <div style={{ display: 'flex', height: '100%' }}>
+            <div className="settings-layout">
               
               {/* Settings Sidebar */}
-              <div style={{ width: 240, borderRight: '1px solid var(--border)', background: 'var(--bg-sidebar)', padding: '24px 16px' }}>
+              <div className="settings-sidebar">
                 <div style={{ fontSize: '18px', fontWeight: 600, padding: '0 8px', marginBottom: '24px' }}>Settings</div>
                 <button onClick={() => setSettingsTab('youtube')} className={`nav-item ${settingsTab === 'youtube' ? 'active' : ''}`}><Youtube size={16} /> Connections</button>
                 <button onClick={() => setSettingsTab('ai')} className={`nav-item ${settingsTab === 'ai' ? 'active' : ''}`}><Key size={16} /> API Keys</button>
@@ -228,7 +228,7 @@ function MainApp() {
               </div>
 
               {/* Settings Content Area */}
-              <div style={{ flex: 1, padding: '40px', background: 'var(--bg)', overflowY: 'auto' }}>
+              <div className="settings-content">
                 <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '24px' }}>
                    <button className="btn btn-secondary" style={{ padding: '6px', border: 'none' }} onClick={() => setIsSettingsOpen(false)}><X size={20} /></button>
                 </div>
@@ -240,7 +240,7 @@ function MainApp() {
 
                     <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', padding: '20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                        <div style={{ padding: '12px', background: 'rgba(239, 68, 68, 0.1)', borderRadius: 'var(--radius-sm)', color: '#ef4444' }}><Youtube size={24} /></div>
+                        <div style={{ padding: '12px', background: 'var(--error-bg)', borderRadius: 'var(--radius-sm)', color: 'var(--error-text)' }}><Youtube size={24} /></div>
                         <div>
                           <div style={{ fontWeight: 600, fontSize: '14px' }}>YouTube</div>
                           <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>{snippet.title || "Connected"}</div>
@@ -250,7 +250,7 @@ function MainApp() {
                     </div>
 
                     <div style={{ borderTop: '1px solid var(--border)', paddingTop: '24px' }}>
-                      <button className="btn" onClick={handleLogout} style={{ color: '#ef4444', background: 'rgba(239,68,68,0.1)' }}>
+                      <button className="btn" onClick={handleLogout} style={{ color: 'var(--error-text)', background: 'var(--error-bg)' }}>
                         <LogOut size={14} /> Disconnect Account
                       </button>
                     </div>
@@ -270,14 +270,19 @@ function MainApp() {
                             ••••••••••••••••••••••••{geminiKey.slice(-6)}
                           </div>
                         </div>
-                        <button className="btn" onClick={handleRemoveGeminiKey} style={{ color: '#ef4444', background: 'rgba(239,68,68,0.1)' }}>
+                        <button className="btn" onClick={handleRemoveGeminiKey} style={{ color: 'var(--error-text)', background: 'var(--error-bg)' }}>
                            <Trash2 size={14} /> Remove Key
                         </button>
                       </>
                     ) : (
                       <>
                         <div className="form-group">
-                           <label className="form-label">Gemini API Key</label>
+                           <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                             Gemini API Key 
+                             <span title="The key needed to unlock AI features. Get it from aistudio.google.com" style={{ color: 'var(--text-muted)', cursor: 'help', display: 'flex' }}>
+                               <HelpCircle size={14} />
+                             </span>
+                           </label>
                            <input
                              type="password"
                              className="form-input"
@@ -285,7 +290,10 @@ function MainApp() {
                              value={newGeminiKey}
                              onChange={(e) => setNewGeminiKey(e.target.value)}
                            />
-                           {keyError && <div style={{ color: '#ef4444', fontSize: '12px', marginTop: '8px' }}>{keyError}</div>}
+                           <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '8px' }}>
+                             Don't have an API key? Get one for free at <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" style={{ color: 'var(--chart-primary)', fontWeight: 600, textDecoration: 'none' }}>Google AI Studio ↗</a>
+                           </div>
+                           {keyError && <div style={{ color: 'var(--error-text)', fontSize: '12px', marginTop: '8px' }}>{keyError}</div>}
                         </div>
                         <button className="btn btn-primary" onClick={handleSaveGeminiKey} disabled={!newGeminiKey.trim() || isValidatingKey}>
                           {isValidatingKey ? <Spinner size={16} /> : "Save API Key"}
@@ -318,6 +326,20 @@ function MainApp() {
                          <div style={{ fontWeight: 600, fontSize: '14px' }}>Dark Mode</div>
                          <div style={{ fontSize: '13px', color: '#888' }}>Sleek & minimal</div>
                       </div>
+                    </div>
+
+                    <div style={{ marginTop: '32px', paddingTop: '24px', borderTop: '1px solid var(--border)' }}>
+                      <h4 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '8px' }}>Reset Tour</h4>
+                      <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '16px' }}>Restart the CreatorIQ quick tour to learn the interface.</p>
+                      <button 
+                        className="btn btn-secondary" 
+                        onClick={() => {
+                          localStorage.setItem("creator_iq_walkthrough", "false");
+                          window.location.reload();
+                        }}
+                      >
+                        Restart Walkthrough
+                      </button>
                     </div>
                   </div>
                 )}
@@ -353,7 +375,7 @@ function MainApp() {
         <div className="modal-overlay" style={{ zIndex: 3000 }}>
           <div className="modal-content fade-in" style={{ maxWidth: 400, padding: '32px', textAlign: 'center' }}>
             <div style={{ display: 'inline-flex', padding: 16, background: 'rgba(239,68,68,0.1)', borderRadius: '50%', marginBottom: 24 }}>
-              <ShieldAlert size={32} color="#ef4444" />
+              <ShieldAlert size={32} color="var(--error-text)" />
             </div>
             <h2 style={{ fontSize: 24, fontWeight: 600, marginBottom: 12 }}>Session Expired</h2>
             <p style={{ fontSize: 14, color: 'var(--text-muted)', marginBottom: 32 }}>Your YouTube security token has expired. Please reconnect to continue.</p>
@@ -364,6 +386,9 @@ function MainApp() {
           </div>
         </div>
       )}
+
+      {/* Global Walkthrough Component */}
+      <Walkthrough />
     </div>
   );
 }

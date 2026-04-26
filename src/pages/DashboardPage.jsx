@@ -44,8 +44,8 @@ export default function DashboardPage({ channelData, videos, playlists, setPage,
     <div className="page fade-in">
       
       {/* 1. CHANNEL HEADLINE */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '40px' }}>
-        <div style={{ display: 'flex', gap: '24px', alignItems: 'center' }}>
+      <div className="channel-headline" style={{ marginBottom: '40px' }}>
+        <div className="channel-info">
           {snippet.thumbnails?.high?.url ? (
             <img src={snippet.thumbnails.high.url} alt="channel" style={{ width: 80, height: 80, borderRadius: "50%", border: "1px solid var(--border)", objectFit: "cover" }} />
           ) : (
@@ -63,7 +63,7 @@ export default function DashboardPage({ channelData, videos, playlists, setPage,
       </div>
 
       {/* 2. MINIMALIST KPIs */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '24px', marginBottom: '48px' }}>
+      <div className="kpi-grid" style={{ marginBottom: '48px' }}>
         {[
           { label: "Total Subscribers", val: formatCount(parseInt(ch.subscriberCount || 0)) },
           { label: "Channel Views", val: formatCount(parseInt(ch.viewCount || totalViews || 0)) },
@@ -88,7 +88,7 @@ export default function DashboardPage({ channelData, videos, playlists, setPage,
              <h3 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text)' }}>Performance Trajectory</h3>
              <button className="btn btn-secondary" style={{ fontSize: '12px', padding: '6px 12px' }}>Last 30 Days</button>
           </div>
-          <div style={{ width: '100%', height: 350, border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '24px', background: 'var(--surface)' }}>
+          <div className="chart-container" style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '24px', background: 'var(--surface)' }}>
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={chartData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
                 <defs>
@@ -110,7 +110,7 @@ export default function DashboardPage({ channelData, videos, playlists, setPage,
       )}
 
       {/* 4. LIST VIEWS */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '40px', marginBottom: '48px' }}>
+      <div className="dashboard-list-grid" style={{ marginBottom: '48px' }}>
         
         {/* Top Videos Linear List */}
         <div>

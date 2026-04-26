@@ -1,10 +1,13 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useContext } from 'react';
 import { UploadCloud, Wand2, AlertTriangle, CheckCircle2, Video, Lock, Globe, Link, Layers, Image as ImageIcon, Sparkles, X, ImagePlus, Crop, LayoutList, Trash2 } from 'lucide-react';
-import { analyzeTitle, analyzeDescription, analyzeTags, getScoreColor } from '../utils';
+import { analyzeTitle, analyzeDescription, analyzeTags, getScoreColor, calculateOverallSEO } from '../utils';
 import { generateFreshSEO, uploadVideoToYouTube, fetchPlaylists, addVideoToPlaylist, analyzeThumbnailWithAI, generateAIThumbnail, uploadCustomThumbnail } from '../api';
+import { CreatorContext } from '../context/CreatorContext';
 import { Spinner, ScoreCircle } from '../components/Shared';
 
 export default function UploadPage() {
+  const { geminiKey, setIsSettingsOpen, setSettingsTab } = useContext(CreatorContext);
+  const handleLockedAI = () => { setSettingsTab('ai'); setIsSettingsOpen(true); };
   const draft = JSON.parse(localStorage.getItem('creator_iq_upload_draft')) || {};
 
   const [file, setFile] = useState(null);
@@ -70,7 +73,7 @@ export default function UploadPage() {
   const titleScore = analyzeTitle(title);
   const descScore = analyzeDescription(description);
   const tagsScore = analyzeTags(tags.split(",").filter(Boolean));
-  const overallSEO = Math.round((titleScore.score + descScore.score + tagsScore.score) / 3);
+  const overallSEO = calculateOverallSEO(titleScore, descScore, tagsScore);
 
   const formatTime = (seconds) => {
     if (isNaN(seconds)) return "0:00";
@@ -236,7 +239,7 @@ export default function UploadPage() {
     <div className="page fade-in" style={{ paddingBottom: 60, maxWidth: 1400, margin: '0 auto' }}>
       
       {/* HEADER DIVIDER */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid var(--border)', paddingBottom: 24, marginBottom: 32 }}>
+      <div className="header-split" style={{ borderBottom: '1px solid var(--border)', paddingBottom: 24, marginBottom: 32 }}>
         <div>
           <h1 style={{ fontSize: 32, fontWeight: 600, letterSpacing: '-0.02em', marginBottom: 8, color: 'var(--text)' }}>Upload Studio</h1>
           <p style={{ fontSize: 14, color: 'var(--text-muted)' }}>Publish directly to YouTube with AI-optimized metadata & A/B scored thumbnails.</p>
@@ -266,7 +269,7 @@ export default function UploadPage() {
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(400px, 1fr) minmax(300px, 350px)', gap: 40 }}>
+      <div className="page-grid-2col">
         
         {/* LEFT PANE */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 40 }}>
@@ -312,7 +315,7 @@ export default function UploadPage() {
                      </button>
                    </div>
 
-                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
+                   <div className="thumb-grid-3">
                      {thumbs.map((thumb, idx) => (
                        <div key={idx} onClick={() => setActiveThumbIdx(idx)} style={{ cursor: 'pointer' }}>
                          <div style={{ width: '100%', aspectRatio: '16/9', border: activeThumbIdx === idx ? '2px solid var(--accent)' : '2px solid transparent', borderRadius: 'var(--radius-md)', overflow: 'hidden', background: 'var(--surface)', position: 'relative', outline: '1px solid var(--border)' }}>
@@ -360,9 +363,9 @@ export default function UploadPage() {
                               </label>
                               <button className="btn btn-secondary" onClick={() => setIsExtracting(true)} style={{ flexShrink: 0, height: 40 }}><Crop size={16} /> Capture Frame</button>
                               <div style={{ flex: 1, display: 'flex', alignItems: 'center', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', padding: 4 }}>
-                                 <input className="form-input" placeholder="Or enter AI prompt..." value={thumbs[activeThumbIdx].prompt || ""} onChange={(e) => updateThumb(activeThumbIdx, { prompt: e.target.value })} style={{ border: 'none', height: '100%', background: 'transparent' }} />
-                                 <button className="btn btn-ai btn-sm" onClick={handleGenerateThumbAI} disabled={thumbs[activeThumbIdx].generating || !thumbs[activeThumbIdx].prompt} style={{ borderRadius: 'var(--radius-sm)' }}>
-                                   {thumbs[activeThumbIdx].generating ? <Spinner size={14} /> : "Generate"}
+                                 <input className="form-input" placeholder="Or enter AI prompt..." value={thumbs[activeThumbIdx].prompt || ""} onChange={(e) => updateThumb(activeThumbIdx, { prompt: e.target.value })} style={{ border: 'none', height: '100%', background: 'transparent' }} disabled={!geminiKey} />
+                                 <button className="btn btn-ai btn-sm" onClick={geminiKey ? handleGenerateThumbAI : handleLockedAI} disabled={(thumbs[activeThumbIdx].generating || !thumbs[activeThumbIdx].prompt) && !!geminiKey} style={{ borderRadius: 'var(--radius-sm)' }}>
+                                   {thumbs[activeThumbIdx].generating ? <Spinner size={14} /> : geminiKey ? "Generate" : <><Lock size={12} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} /> Unlock AI</>}
                                  </button>
                               </div>
                            </div>
@@ -392,7 +395,9 @@ export default function UploadPage() {
              <div className="form-group">
                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                  <label className="form-label">Video Title</label>
-                 <button className="btn btn-secondary btn-sm" onClick={() => handleGenerateText("title")} disabled={aiLoading === "title"} style={{ padding: '4px 12px', fontSize: 11, border: 'none', background: 'var(--surface-hover)' }}>{aiLoading === 'title' ? <Spinner size={12} /> : "Auto-Write"}</button>
+                 <button className="btn btn-secondary btn-sm" onClick={geminiKey ? () => handleGenerateText("title") : handleLockedAI} disabled={aiLoading === "title" && !!geminiKey} style={{ padding: '4px 12px', fontSize: 11, border: 'none', background: 'var(--surface-hover)', ...(geminiKey ? {} : { color: 'var(--text-muted)' }) }}>
+                   {aiLoading === 'title' ? <Spinner size={12} /> : geminiKey ? "Auto-Write" : <><Lock size={12} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} /> Unlock AI</>}
+                 </button>
                </div>
                <input className="form-input" value={title} onChange={e => setTitle(e.target.value)} style={{ fontSize: 16, fontWeight: 500 }} />
              </div>
@@ -400,16 +405,20 @@ export default function UploadPage() {
              <div className="form-group">
                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                  <label className="form-label">Description</label>
-                 <button className="btn btn-secondary btn-sm" onClick={() => handleGenerateText("description")} disabled={aiLoading === "description"} style={{ padding: '4px 12px', fontSize: 11, border: 'none', background: 'var(--surface-hover)' }}>{aiLoading === 'description' ? <Spinner size={12} /> : "Auto-Write"}</button>
+                 <button className="btn btn-secondary btn-sm" onClick={geminiKey ? () => handleGenerateText("description") : handleLockedAI} disabled={aiLoading === "description" && !!geminiKey} style={{ padding: '4px 12px', fontSize: 11, border: 'none', background: 'var(--surface-hover)', ...(geminiKey ? {} : { color: 'var(--text-muted)' }) }}>
+                   {aiLoading === 'description' ? <Spinner size={12} /> : geminiKey ? "Auto-Write" : <><Lock size={12} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} /> Unlock AI</>}
+                 </button>
                </div>
                <textarea className="form-input" rows={6} value={description} onChange={e => setDescription(e.target.value)} style={{ fontSize: 14, fontFamily: 'var(--font-mono)' }} />
              </div>
 
              <div className="form-group mb-0">
-               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                 <label className="form-label">Keywords & Tags</label>
-                 <button className="btn btn-secondary btn-sm" onClick={() => handleGenerateText("tags")} disabled={aiLoading === "tags"} style={{ padding: '4px 12px', fontSize: 11, border: 'none', background: 'var(--surface-hover)' }}>{aiLoading === 'tags' ? <Spinner size={12} /> : "Auto-Extract"}</button>
-               </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <label className="form-label">Keywords & Tags</label>
+                  <button className="btn btn-secondary btn-sm" onClick={geminiKey ? () => handleGenerateText("tags") : handleLockedAI} disabled={aiLoading === "tags" && !!geminiKey} style={{ padding: '4px 12px', fontSize: 11, border: 'none', background: 'var(--surface-hover)', ...(geminiKey ? {} : { color: 'var(--text-muted)' }) }}>
+                    {aiLoading === 'tags' ? <Spinner size={12} /> : geminiKey ? "Auto-Extract" : <><Lock size={12} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} /> Unlock AI</>}
+                  </button>
+                </div>
                <input className="form-input" value={tags} onChange={e => setTags(e.target.value)} placeholder="comma, separated, tags" />
              </div>
           </div>

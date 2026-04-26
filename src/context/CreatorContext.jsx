@@ -25,6 +25,10 @@ export const CreatorProvider = ({ children }) => {
   const [keyError, setKeyError] = useState("");
   
   const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem("theme") === "dark");
+  const [hasSeenWalkthrough, setHasSeenWalkthrough] = useState(() => localStorage.getItem("creator_iq_walkthrough") === "true");
+  
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [settingsTab, setSettingsTab] = useState("youtube");
 
   // Authentication Wipe
   const handleLogout = () => {
@@ -133,7 +137,14 @@ export const CreatorProvider = ({ children }) => {
     newGeminiKey, setNewGeminiKey,
     isValidatingKey, setIsValidatingKey,
     keyError, setKeyError,
-    handleSaveGeminiKey, handleRemoveGeminiKey
+    handleSaveGeminiKey, handleRemoveGeminiKey,
+
+    // Walkthrough State
+    hasSeenWalkthrough, setHasSeenWalkthrough,
+
+    // Global UI Settings Moda State
+    isSettingsOpen, setIsSettingsOpen,
+    settingsTab, setSettingsTab
   };
 
   return (

@@ -1,13 +1,15 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useContext } from 'react';
+import { CreatorContext } from "../context/CreatorContext";
 import {
   AlertTriangle, Search, Filter, Activity, Target, ChevronLeft,
   CheckCircle, AlertOctagon, ArrowRight, BarChart2, Video, ChevronRight
 } from "lucide-react";
-import { analyzeTitle, analyzeDescription, analyzeTags, getScoreColor, getScoreLabel } from "../utils";
+import { analyzeTitle, analyzeDescription, analyzeTags, getScoreColor, getScoreLabel, calculateOverallSEO } from "../utils";
 import { ScoreCircle } from "../components/Shared";
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip } from 'recharts';
 
 export default function BulkSEOPage({ videos, setPage, setEditingVideoId }) {
+  const { geminiKey } = useContext(CreatorContext);
   const [searchTerm, setSearchTerm] = useState("");
   const [sortOption, setSortOrder] = useState("worst");
   const [filterStatus, setFilterStatus] = useState("all");
@@ -24,7 +26,7 @@ export default function BulkSEOPage({ videos, setPage, setEditingVideoId }) {
       const t = analyzeTitle(v.title);
       const d = analyzeDescription(v.description);
       const tg = analyzeTags(v.tags);
-      const overall = Math.round((t.score + d.score + tg.score) / 3);
+      const overall = calculateOverallSEO(t, d, tg);
       const allIssues = [...t.issues, ...d.issues, ...tg.issues];
 
       let status = "ok";
@@ -79,6 +81,39 @@ export default function BulkSEOPage({ videos, setPage, setEditingVideoId }) {
     currentPage * ITEMS_PER_PAGE
   );
 
+  if (!geminiKey) {
+    return (
+      <div className="page fade-in" style={{ paddingBottom: 60, maxWidth: 1400, margin: '0 auto', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 'calc(100vh - 120px)' }}>
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '60px 40px', maxWidth: 720, textAlign: 'center', boxShadow: 'var(--shadow-md)' }}>
+           <div style={{ padding: 20, background: 'linear-gradient(135deg, rgba(88,101,242,0.1) 0%, rgba(168,85,247,0.1) 100%)', borderRadius: '50%', display: 'inline-flex', marginBottom: 24, border: '1px solid rgba(88,101,242,0.2)' }}>
+              <Target size={48} color="var(--chart-primary)" />
+           </div>
+           <h2 style={{ fontSize: 32, fontWeight: 700, marginBottom: 16, color: 'var(--text)' }}>Unlock AI SEO</h2>
+           <p style={{ fontSize: 16, color: 'var(--text-muted)', marginBottom: 40, lineHeight: 1.6 }}>Harness the power of Google's Gemini AI to automatically generate high-performing video titles, descriptions, and tags. To begin, you need to connect your free API key.</p>
+           
+           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, textAlign: 'left', marginBottom: 40 }}>
+              <div style={{ background: 'var(--bg)', padding: 16, borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}>
+                 <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 8 }}>STEP 1</div>
+                 <div style={{ fontSize: 13, color: 'var(--text)' }}>Go to <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" style={{ color: 'var(--chart-primary)', fontWeight: 600, textDecoration: 'none' }}>Google AI Studio</a> and sign in.</div>
+              </div>
+              <div style={{ background: 'var(--bg)', padding: 16, borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}>
+                 <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 8 }}>STEP 2</div>
+                 <div style={{ fontSize: 13, color: 'var(--text)' }}>Click <b>"Get API Key"</b> in the left menu and create a key.</div>
+              </div>
+              <div style={{ background: 'var(--bg)', padding: 16, borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}>
+                 <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 8 }}>STEP 3</div>
+                 <div style={{ fontSize: 13, color: 'var(--text)' }}>Open the <b>CreatorIQ Settings Menu</b> (gear icon) and paste it.</div>
+              </div>
+           </div>
+
+           <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="btn btn-primary" style={{ padding: '12px 32px', fontSize: 16, display: 'inline-flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
+              Get Free API Key <ArrowRight size={18} />
+           </a>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="page fade-in" style={{ paddingBottom: 60, maxWidth: 1400, margin: '0 auto' }}>
 
@@ -89,7 +124,7 @@ export default function BulkSEOPage({ videos, setPage, setEditingVideoId }) {
       </div>
 
       {/* INTELLIGENCE DASHBOARD (SPLIT LAYOUT) */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(300px, 1fr) 2fr', gap: 24, marginBottom: 40 }}>
+      <div className="page-grid-sidebar" style={{ marginBottom: 40 }}>
         
         {/* Left Col: KPI Stack */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -143,8 +178,8 @@ export default function BulkSEOPage({ videos, setPage, setEditingVideoId }) {
       </div>
 
       {/* FILTER & SEARCH BAR (SPOTLIGHT STYLE) */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 16 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'var(--surface)', padding: '12px 20px', borderRadius: 'var(--radius-full)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)', flex: '1 1 400px', maxWidth: 600 }}>
+      <div className="controls-bar" style={{ marginBottom: 24 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'var(--surface)', padding: '12px 20px', borderRadius: 'var(--radius-full)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)', flex: '1 1 auto', minWidth: 0, maxWidth: 600 }}>
           <Search size={18} color="var(--text-muted)" />
           <input
             type="text"
@@ -177,90 +212,107 @@ export default function BulkSEOPage({ videos, setPage, setEditingVideoId }) {
         </div>
       </div>
 
-      {/* ACTIONABLE AI DATA TABLE */}
-      <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', background: 'var(--surface)', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
-        
-        {/* Table Header */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(250px, 3.5fr) 2fr 3fr 120px', gap: 24, padding: '12px 24px', background: 'var(--surface-hover)', borderBottom: '1px solid var(--border)', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-          <div>Video Asset</div>
-          <div>Vital Signs</div>
-          <div>Top Issue</div>
-          <div style={{ textAlign: 'center' }}>Action</div>
-        </div>
+      {/* REDESIGNED SEO AUDIT CARDS */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
 
-        {paginatedVideos.map((v, i) => (
-          <div key={v.id} style={{ display: 'grid', gridTemplateColumns: 'minmax(250px, 3.5fr) 2fr 3fr 120px', gap: 24, padding: '20px 24px', alignItems: 'center', borderBottom: i < paginatedVideos.length - 1 ? '1px solid var(--border-light)' : 'none', transition: 'background 0.2s' }} className="list-row">
+        {paginatedVideos.map((v, i) => {
+          const scoreColor = getScoreColor(v.seo.overall);
+          const getBarColor = (s) => s < 50 ? 'var(--error-text)' : s < 80 ? 'var(--warning-text)' : 'var(--success-text)';
 
-            {/* Video Column */}
-            <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-              <div style={{ position: 'relative', flexShrink: 0 }}>
-                {v.thumbnail ? (
-                  <img src={v.thumbnail} style={{ width: 100, height: 56, objectFit: 'cover', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', display: 'block' }} />
-                ) : (
-                  <div style={{ width: 100, height: 56, background: 'var(--surface-hover)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Video size={20} color="var(--text-muted)" /></div>
-                )}
-                {/* Score floating badge */}
-                <div style={{ position: 'absolute', bottom: -6, right: -6, background: 'var(--surface)', borderRadius: '50%', padding: 2, border: '1px solid var(--border)' }}>
-                   <ScoreCircle score={v.seo.overall} size={24} strokeWidth={3} />
+          return (
+            <div key={v.id} className="seo-audit-card" style={{
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
+              borderRadius: 'var(--radius-lg)',
+              overflow: 'hidden',
+              transition: 'all 0.25s ease',
+              cursor: 'pointer',
+              position: 'relative'
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.borderColor = scoreColor; e.currentTarget.style.boxShadow = `0 4px 24px ${scoreColor}15`; }}
+            onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.boxShadow = 'none'; }}
+            >
+              {/* Score accent line */}
+              <div style={{ height: 3, background: `linear-gradient(90deg, ${scoreColor}, ${scoreColor}40)` }} />
+
+              <div className="seo-card-body" style={{ padding: '20px 24px', display: 'flex', gap: 20, alignItems: 'center' }}>
+
+                {/* LEFT: Score Ring */}
+                <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                  <ScoreCircle score={v.seo.overall} size={56} />
+                  <span style={{ fontSize: 10, fontWeight: 700, color: scoreColor, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    {v.seo.overall >= 80 ? 'Good' : v.seo.overall >= 50 ? 'Fair' : 'Critical'}
+                  </span>
                 </div>
-              </div>
-              <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--text)', display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", lineHeight: 1.4 }}>
-                {v.title}
-              </div>
-            </div>
 
-            {/* Vital Signs Badges */}
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-              {[{ label: "TTL", score: v.seo.t.score }, { label: "DSC", score: v.seo.d.score }, { label: "TAG", score: v.seo.tg.score }].map(s => {
-                const isCrit = s.score < 50;
-                const isWarn = s.score >= 50 && s.score < 80;
-                const badgeBg = isCrit ? 'var(--error-bg)' : isWarn ? 'var(--warning-bg)' : 'var(--success-bg)';
-                const badgeColoredTxt = isCrit ? 'var(--error-text)' : isWarn ? 'var(--warning-text)' : 'var(--success-text)';
-                const Icon = isCrit ? AlertOctagon : isWarn ? AlertTriangle : CheckCircle;
-                return (
-                  <div key={s.label} style={{ background: badgeBg, color: badgeColoredTxt, border: `1px solid ${isCrit ? 'var(--error-border)' : isWarn ? 'var(--warning-border)' : 'var(--success-border)'}`, padding: '4px 8px', borderRadius: 'var(--radius-full)', display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, letterSpacing: '0.05em' }}>
-                    <Icon size={12} strokeWidth={3} /> {s.label} {s.score}
+                {/* CENTER: Video + Vital Bars */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  {/* Video Title Row */}
+                  <div style={{ display: 'flex', gap: 14, alignItems: 'center', marginBottom: 14 }}>
+                    <div style={{ flexShrink: 0 }}>
+                      {v.thumbnail ? (
+                        <img src={v.thumbnail} alt="" style={{ width: 72, height: 40, objectFit: 'cover', borderRadius: 6, border: '1px solid var(--border)', display: 'block' }} />
+                      ) : (
+                        <div style={{ width: 72, height: 40, background: 'var(--surface-hover)', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Video size={16} color="var(--text-muted)" /></div>
+                      )}
+                    </div>
+                    <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--text)', display: "-webkit-box", WebkitLineClamp: 1, WebkitBoxOrient: "vertical", overflow: "hidden", lineHeight: 1.4, flex: 1 }}>
+                      {v.title}
+                    </div>
                   </div>
-                );
-              })}
-            </div>
 
-            {/* Issue Preview */}
-            <div style={{ fontSize: 13, lineHeight: 1.5 }}>
-              {v.seo.allIssues.length > 0 ? (
-                <div style={{ color: "var(--text)", display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-                  <AlertTriangle size={16} color="var(--error-text)" style={{ flexShrink: 0, marginTop: 2 }} />
-                  <span style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{v.seo.allIssues[0]}</span>
+                  {/* Vital Signs Mini Bar Chart */}
+                  <div className="seo-vital-bars" style={{ display: 'flex', gap: 16 }}>
+                    {[{ label: "Title", score: v.seo.t.score }, { label: "Description", score: v.seo.d.score }, { label: "Tags", score: v.seo.tg.score }].map(s => (
+                      <div key={s.label} style={{ flex: 1 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                          <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>{s.label}</span>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: getBarColor(s.score) }}>{s.score}</span>
+                        </div>
+                        <div style={{ height: 4, borderRadius: 2, background: 'var(--border)', overflow: 'hidden' }}>
+                          <div style={{ width: `${s.score}%`, height: '100%', borderRadius: 2, background: getBarColor(s.score), transition: 'width 0.6s ease' }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              ) : (
-                <div style={{ color: "var(--text)", display: 'flex', gap: 8, alignItems: 'center' }}>
-                  <CheckCircle size={16} color="var(--success-text)" />
-                  <span style={{ fontWeight: 500 }}>Fully Optimized</span>
+
+                {/* RIGHT: Issue + Action */}
+                <div className="seo-card-right" style={{ flexShrink: 0, width: 220, display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'flex-start' }}>
+                  <div style={{ fontSize: 12, lineHeight: 1.5, color: 'var(--text-muted)', display: 'flex', gap: 6, alignItems: 'flex-start' }}>
+                    {v.seo.allIssues.length > 0 ? (
+                      <>
+                        <AlertTriangle size={14} color="var(--error-text)" style={{ flexShrink: 0, marginTop: 1 }} />
+                        <span style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", color: 'var(--text)' }}>{v.seo.allIssues[0]}</span>
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle size={14} color="var(--success-text)" style={{ flexShrink: 0, marginTop: 1 }} />
+                        <span style={{ fontWeight: 500, color: 'var(--success-text)' }}>Fully Optimized</span>
+                      </>
+                    )}
+                  </div>
+                  <button
+                    className="btn btn-ai btn-sm"
+                    style={{ padding: '8px 20px', borderRadius: 'var(--radius-full)', fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6, width: '100%', justifyContent: 'center' }}
+                    onClick={() => {
+                      if (setEditingVideoId && setPage) {
+                        setEditingVideoId(v.id?.videoId || v.id);
+                        setPage("editvideo");
+                      }
+                    }}
+                  >
+                    <Activity size={14} /> Optimize
+                  </button>
                 </div>
-              )}
-            </div>
 
-            {/* Action - Optimize AI */}
-            <div style={{ display: "flex", justifyContent: 'center' }}>
-               <button
-                 className="btn btn-ai btn-sm"
-                 style={{ padding: '8px 16px', borderRadius: 'var(--radius-full)', fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6, width: '100%', justifyContent: 'center' }}
-                 onClick={() => {
-                   if (setEditingVideoId && setPage) {
-                     setEditingVideoId(v.id?.videoId || v.id);
-                     setPage("editvideo");
-                   }
-                 }}
-               >
-                 <Activity size={14} /> Optimize
-               </button>
+              </div>
             </div>
-
-          </div>
-        ))}
+          );
+        })}
 
         {displayedVideos.length === 0 && (
-          <div style={{ padding: 80, textAlign: 'center', color: 'var(--text-light)' }}>
+          <div style={{ padding: 80, textAlign: 'center', color: 'var(--text-light)', background: 'var(--surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border)' }}>
              <Search size={40} style={{ marginBottom: 16, opacity: 0.2 }} />
              <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text)' }}>No videos found</div>
              <p style={{ fontSize: 14, marginTop: 4 }}>Try altering your search or filters.</p>

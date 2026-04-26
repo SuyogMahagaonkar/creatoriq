@@ -42,10 +42,13 @@ export function timeAgo(dateStr) {
 // ============================================================
 export function analyzeTitle(title) {
   let score = 0; const issues = []; const tips = [];
-  const len = title?.length || 0;
-  if (len >= 40 && len <= 70) { score += 25; } 
-  else if (len < 40) { score += 10; issues.push("Title too short — aim for 50–70 characters"); }
-  else { score += 15; issues.push("Title may be truncated in search (>70 chars)"); }
+  if (!title || title.trim() === "") {
+     return { score: 0, issues: ["Title is missing. The title is the #1 factor for CTR."], tips: [] };
+  }
+  const len = title.length;
+  if (len >= 40 && len <= 70) { score += 25; tips.push("Perfect length (40-70 chars)"); } 
+  else if (len < 40) { score += 10; issues.push("Title too short — aim for 40–70 characters"); }
+  else { score += 15; issues.push("Title may be truncated on mobile (>70 chars)"); }
   
   const powerWords = ["how","why","what","best","top","ultimate","guide","secret","fast","easy","free","proven","exact","complete","step","never","always","new","first","last","every","only"];
   const hasPower = title ? powerWords.some(w => title.toLowerCase().includes(w)) : false;
@@ -71,8 +74,8 @@ export function analyzeTitle(title) {
 
 export function analyzeDescription(desc) {
   let score = 0; const issues = []; const tips = [];
-  if (!desc || desc.length < 50) {
-    return { score: 5, issues: ["Description is empty or too short — this hurts SEO significantly"], tips: [] };
+  if (!desc || desc.trim() === "") {
+    return { score: 0, issues: ["Description is missing. The first 150 chars are vital for search indexing."], tips: [] };
   }
   const len = desc.length;
   if (len >= 200) { score += 25; tips.push("Good description length"); }
@@ -125,13 +128,21 @@ export function analyzeTags(tags) {
 }
 
 export function getScoreColor(score) {
-  if (score >= 75) return "#057642"; 
-  if (score >= 50) return "#B24020"; 
-  return "#CC1016"; 
+  if (score >= 75) return "#3aaa7a"; 
+  if (score >= 50) return "#c98a3e"; 
+  return "#d46060"; 
 }
 
 export function getScoreLabel(score) {
   if (score >= 75) return "Strong";
   if (score >= 50) return "Needs Work";
   return "Poor";
+}
+
+export function calculateOverallSEO(titleObj, descObj, tagsObj) {
+  const t = titleObj?.score || 0;
+  const d = descObj?.score || 0;
+  const tg = tagsObj?.score || 0;
+  // Weighted Average based on industry data: 60% Title, 30% Desc, 10% Tags
+  return Math.round((t * 0.60) + (d * 0.30) + (tg * 0.10));
 }
