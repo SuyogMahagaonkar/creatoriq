@@ -63,7 +63,7 @@ export default function Onboarding({ onComplete }) {
   };
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--surface)', padding: 24 }}>
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--surface)', padding: 24, position: 'relative' }}>
       <div className="card fade-in" style={{ maxWidth: 480, width: '100%', textAlign: 'center', padding: 40 }}>
         
         {/* STEP 1: LOGIN */}
@@ -146,7 +146,7 @@ export default function Onboarding({ onComplete }) {
           </div>
         )}
       </div>
-      <div style={{ textAlign: 'center', marginTop: 24, fontSize: 11, color: 'var(--text-muted)' }}>
+      <div style={{ position: 'absolute', bottom: 20, left: 0, right: 0, textAlign: 'center', fontSize: 11, color: 'var(--text-muted)' }}>
         <a href={`${import.meta.env.BASE_URL}privacy.html`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-muted)', textDecoration: 'none' }}>Privacy Policy</a>
         <span style={{ margin: '0 8px', opacity: 0.3 }}>·</span>
         <a href={`${import.meta.env.BASE_URL}terms.html`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-muted)', textDecoration: 'none' }}>Terms of Service</a>
