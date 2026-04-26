@@ -146,6 +146,11 @@ export default function Onboarding({ onComplete }) {
           </div>
         )}
       </div>
+      <div style={{ textAlign: 'center', marginTop: 24, fontSize: 11, color: 'var(--text-muted)' }}>
+        <a href={`${import.meta.env.BASE_URL}privacy.html`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-muted)', textDecoration: 'none' }}>Privacy Policy</a>
+        <span style={{ margin: '0 8px', opacity: 0.3 }}>·</span>
+        <a href={`${import.meta.env.BASE_URL}terms.html`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-muted)', textDecoration: 'none' }}>Terms of Service</a>
+      </div>
     </div>
   );
 }

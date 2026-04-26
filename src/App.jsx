@@ -166,6 +166,11 @@ function MainApp() {
               <LogOut size={14} />
             </button>
           </div>
+          <div style={{ textAlign: 'center', fontSize: '10px', color: 'var(--text-muted)', paddingTop: '4px' }}>
+            <a href={`${import.meta.env.BASE_URL}privacy.html`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-muted)', textDecoration: 'none' }}>Privacy</a>
+            <span style={{ margin: '0 6px', opacity: 0.4 }}>·</span>
+            <a href={`${import.meta.env.BASE_URL}terms.html`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-muted)', textDecoration: 'none' }}>Terms</a>
+          </div>
         </div>
       </nav>
 
