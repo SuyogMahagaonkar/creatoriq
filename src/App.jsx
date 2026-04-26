@@ -122,9 +122,7 @@ function MainApp() {
       <nav className={`sidebar ${isMobileMenuOpen ? "open" : ""} tour-sidebar`}>
         <div className="sidebar-logo">
           <div className="logo-mark">
-            <div style={{ padding: 6, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 6, color: "var(--text)" }}>
-              <BarChart2 size={16} />
-            </div>
+            <img src={`${import.meta.env.BASE_URL}ciq-logo.png`} alt="CreatorIQ" style={{ width: 28, height: 28, borderRadius: 6, objectFit: 'cover' }} />
             <div className="logo-text">CreatorIQ</div>
           </div>
         </div>
